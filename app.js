@@ -11,24 +11,18 @@ import {
   onSnapshot, serverTimestamp, getDoc
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-// ── Firebase 설정 (Vercel 환경 변수 동적 주입 또는 window.__ENV__) ──
-function getFirebaseConfig() {
-  // Vercel: next.config / vercel.json 의 env 를 index.html 에서
-  //  <script>window.__ENV__={...}</script> 형태로 주입하거나,
-  //  아래 직접 설정값을 채워 사용합니다.
-  const env = (typeof window !== 'undefined' && window.__ENV__) || {};
-  return {
-    apiKey:            env.FIREBASE_API_KEY            || 'YOUR_API_KEY',
-    authDomain:        env.FIREBASE_AUTH_DOMAIN        || 'YOUR_PROJECT.firebaseapp.com',
-    projectId:         env.FIREBASE_PROJECT_ID         || 'YOUR_PROJECT_ID',
-    storageBucket:     env.FIREBASE_STORAGE_BUCKET     || 'YOUR_PROJECT.appspot.com',
-    messagingSenderId: env.FIREBASE_MESSAGING_SENDER_ID|| 'YOUR_SENDER_ID',
-    appId:             env.FIREBASE_APP_ID             || 'YOUR_APP_ID',
-  };
-}
+// ── Firebase 설정 ──
+const firebaseConfig = {
+  apiKey:            'AIzaSyADKY7IG3yG84qZ01H2T3S3xbzsd4XGqe4',
+  authDomain:        'ohtravel-3540c.firebaseapp.com',
+  projectId:         'ohtravel-3540c',
+  storageBucket:     'ohtravel-3540c.firebasestorage.app',
+  messagingSenderId: '796455069317',
+  appId:             '1:796455069317:web:3c2c830ca85d3e26316bec',
+};
 
 // ── 앱 초기화 ──
-const firebaseApp = initializeApp(getFirebaseConfig());
+const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 
 // ── 상태 ──
