@@ -278,8 +278,9 @@ async function saveNewTrip() {
     $('modal-new-trip').classList.remove('open');
     showToast('여행이 등록되었습니다 🎉');
     navigate(ref.id);
-  } catch {
-    showToast('등록 실패: 오프라인 상태입니다');
+  } catch (err) {
+    console.error('[saveNewTrip]', err);
+    showToast(`등록 실패: ${err?.message || err}`);
   }
 }
 
