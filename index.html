@@ -12,29 +12,21 @@
 </head>
 <body>
 
-  <!-- ── NAV ── -->
   <nav class="nav">
     <div class="brand"><b>OH</b>travel</div>
     <div class="nav-end" id="nav-end"></div>
   </nav>
 
-  <!-- ══════════════════════════════════════
-       VIEW 1: 대시보드
-  ══════════════════════════════════════ -->
+  <!-- ══ VIEW: 대시보드 ══ -->
   <div id="view-dashboard" class="view wrap" style="display:none;">
     <header class="section">
       <div class="t-large">내 여행 목록</div>
       <p style="margin-top:6px;color:var(--text-2);font-size:.95rem;">등록된 여행을 선택하거나 새 여행을 추가하세요.</p>
     </header>
-
     <div class="section">
       <button class="btn accent" id="btn-new-trip">+ 새 여행 등록</button>
     </div>
-
-    <div id="offline-banner" class="offline-banner" style="display:none;">
-      📴 오프라인 모드 — 캐시된 데이터를 표시합니다.
-    </div>
-
+    <div id="offline-banner" class="offline-banner" style="display:none;">📴 오프라인 모드 — 캐시된 데이터를 표시합니다.</div>
     <div id="trip-list" class="grid"></div>
     <div id="trip-list-empty" class="empty-state" style="display:none;">
       <div class="empty-icon">🗺️</div>
@@ -43,50 +35,55 @@
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════
-       VIEW 2: 타임라인
-  ══════════════════════════════════════ -->
+  <!-- ══ VIEW: 타임라인 ══ -->
   <div id="view-timeline" class="view wrap" style="display:none;">
-
     <header class="section timeline-header">
       <button class="btn ghost btn-back" id="btn-back" style="display:none;">← 전체 여행 목록</button>
-      <div id="trip-title-display" class="t-large" style="margin-top:4px;"></div>
-      <div id="trip-date-range" class="t-cap" style="margin-top:4px;font-size:.9rem;text-transform:none;letter-spacing:normal;"></div>
-
-      <!-- 예산 바 -->
+      <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+        <div>
+          <div id="trip-title-display" class="t-large"></div>
+          <div id="trip-date-range" class="t-cap" style="margin-top:4px;font-size:.9rem;text-transform:none;letter-spacing:normal;"></div>
+        </div>
+        <button class="btn sm icon-btn" id="btn-edit-trip" style="margin-top:6px;display:none;">✏️ 편집</button>
+      </div>
       <div id="budget-bar-wrap" class="budget-bar-wrap" style="display:none;">
         <div class="budget-bar-labels">
-          <span id="budget-label-spent">지출 0원</span>
-          <span id="budget-label-total">예산 0원</span>
+          <span id="budget-label-spent"></span>
+          <span id="budget-label-total"></span>
         </div>
-        <div class="budget-bar-track">
-          <div class="budget-bar-fill" id="budget-bar-fill" style="width:0%"></div>
-        </div>
+        <div class="budget-bar-track"><div class="budget-bar-fill" id="budget-bar-fill" style="width:0%"></div></div>
       </div>
-
       <div class="timeline-header-actions" id="timeline-header-actions"></div>
     </header>
-
     <div id="timeline-list"></div>
   </div>
 
-  <!-- ══════════════════════════════════════
-       MODALS
-  ══════════════════════════════════════ -->
+  <!-- ════════════════════ MODALS ════════════════════ -->
 
   <!-- 새 여행 등록 -->
   <div class="modal" id="modal-new-trip" onclick="if(event.target===this)this.classList.remove('open')">
     <div class="modal-card">
       <div class="t-head" style="margin-bottom:16px;">새 여행 등록</div>
-      <div class="field"><label>여행 제목</label>
-        <input class="inp" id="inp-trip-title" placeholder="예: 2025 동남아 배낭여행" /></div>
-      <div class="field"><label>시작일</label>
-        <input type="date" class="inp" id="inp-trip-start" /></div>
-      <div class="field"><label>종료일</label>
-        <input type="date" class="inp" id="inp-trip-end" /></div>
+      <div class="field"><label>여행 제목</label><input class="inp" id="inp-trip-title" placeholder="예: 2025 동남아 배낭여행" /></div>
+      <div class="field"><label>시작일</label><input type="date" class="inp" id="inp-trip-start" /></div>
+      <div class="field"><label>종료일</label><input type="date" class="inp" id="inp-trip-end" /></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
         <button class="btn ghost" id="btn-cancel-new-trip">취소</button>
         <button class="btn accent" id="btn-save-new-trip">등록</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 여행 편집 -->
+  <div class="modal" id="modal-edit-trip" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal-card">
+      <div class="t-head" style="margin-bottom:16px;">여행 편집</div>
+      <div class="field"><label>여행 제목</label><input class="inp" id="inp-edit-trip-title" /></div>
+      <div class="field"><label>시작일</label><input type="date" class="inp" id="inp-edit-trip-start" /></div>
+      <div class="field"><label>종료일</label><input type="date" class="inp" id="inp-edit-trip-end" /></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+        <button class="btn ghost" onclick="document.getElementById('modal-edit-trip').classList.remove('open')">취소</button>
+        <button class="btn accent" id="btn-save-edit-trip">저장</button>
       </div>
     </div>
   </div>
@@ -95,7 +92,6 @@
   <div class="modal" id="modal-transport" onclick="if(event.target===this)closeTransportModal()">
     <div class="modal-card" style="width:min(580px,96vw);">
       <div class="t-head" style="margin-bottom:16px;" id="modal-transport-title">교통 등록</div>
-
       <div class="field"><label>교통 수단</label>
         <select class="inp" id="inp-trans-type">
           <option value="flight">✈️ 비행기</option>
@@ -105,31 +101,40 @@
         </select>
       </div>
       <div class="form-row-2">
-        <div class="field"><label>출발 도시</label>
-          <input class="inp" id="inp-trans-from-city" placeholder="서울" /></div>
-        <div class="field"><label>도착 도시</label>
-          <input class="inp" id="inp-trans-to-city" placeholder="방콕" /></div>
+        <div class="field"><label>출발 도시</label><input class="inp" id="inp-trans-from-city" placeholder="서울" /></div>
+        <div class="field"><label>도착 도시</label><input class="inp" id="inp-trans-to-city" placeholder="방콕" /></div>
       </div>
       <div class="form-row-2">
-        <div class="field"><label>출발 날짜</label>
-          <input type="date" class="inp" id="inp-trans-depart-date" /></div>
-        <div class="field"><label>출발 시간</label>
-          <input type="time" class="inp" id="inp-trans-depart-time" /></div>
+        <div class="field"><label>출발 날짜</label><input type="date" class="inp" id="inp-trans-depart-date" /></div>
+        <div class="field"><label>출발 시간</label><input type="time" class="inp" id="inp-trans-depart-time" /></div>
       </div>
       <div class="form-row-2">
-        <div class="field"><label>도착 날짜</label>
-          <input type="date" class="inp" id="inp-trans-arrive-date" /></div>
-        <div class="field"><label>도착 시간</label>
-          <input type="time" class="inp" id="inp-trans-arrive-time" /></div>
+        <div class="field"><label>도착 날짜</label><input type="date" class="inp" id="inp-trans-arrive-date" /></div>
+        <div class="field"><label>도착 시간</label><input type="time" class="inp" id="inp-trans-arrive-time" /></div>
       </div>
-      <div class="field"><label>편명 / 예약번호</label>
-        <input class="inp" id="inp-trans-booking" placeholder="KE123 / 예약번호" /></div>
-      <div class="field"><label>메모</label>
-        <textarea class="inp" id="inp-trans-memo" rows="2" placeholder="수하물 규정, 터미널 정보 등"></textarea></div>
-
+      <div class="field"><label>편명 / 예약번호</label><input class="inp" id="inp-trans-booking" placeholder="KE123" /></div>
+      <div class="field"><label>메모</label><textarea class="inp" id="inp-trans-memo" rows="2" placeholder="터미널 정보 등"></textarea></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
         <button class="btn ghost" onclick="closeTransportModal()">취소</button>
         <button class="btn accent" id="btn-save-transport">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 숙소 일괄 등록 -->
+  <div class="modal" id="modal-bulk-accom" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal-card">
+      <div class="t-head" style="margin-bottom:16px;">숙소 일괄 등록</div>
+      <p class="t-cap" style="margin-bottom:14px;text-transform:none;letter-spacing:normal;">날짜 범위의 모든 날에 같은 숙소를 적용합니다.</p>
+      <div class="field"><label>숙소 이름</label><input class="inp" id="inp-bulk-accom-name" placeholder="방콕 힐튼 호텔" /></div>
+      <div class="field"><label>구글맵 링크 (선택)</label><input class="inp" id="inp-bulk-accom-map" placeholder="https://maps.google.com/..." /></div>
+      <div class="form-row-2">
+        <div class="field"><label>시작 날짜</label><input type="date" class="inp" id="inp-bulk-start" /></div>
+        <div class="field"><label>종료 날짜</label><input type="date" class="inp" id="inp-bulk-end" /></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+        <button class="btn ghost" onclick="document.getElementById('modal-bulk-accom').classList.remove('open')">취소</button>
+        <button class="btn accent" id="btn-save-bulk-accom">적용</button>
       </div>
     </div>
   </div>
@@ -138,20 +143,14 @@
   <div class="modal" id="modal-edit-day" onclick="if(event.target===this)closeEditModal()">
     <div class="modal-card" style="width:min(560px,96vw);max-height:88vh;overflow-y:auto;">
       <div class="t-head" style="margin-bottom:16px;" id="modal-day-title">편집</div>
-
-      <div class="field"><label>방문 도시</label>
-        <input class="inp" id="inp-city" placeholder="예: 방콕, 파리, 도쿄" /></div>
-      <div class="field"><label>숙소 이름</label>
-        <input class="inp" id="inp-accom-name" placeholder="숙소 이름" /></div>
-      <div class="field"><label>숙소 구글맵 링크</label>
-        <input class="inp" id="inp-accom-map" placeholder="https://maps.google.com/..." /></div>
-
-      <!-- 지출 인라인 -->
+      <div class="field"><label>방문 도시</label><input class="inp" id="inp-city" placeholder="예: 방콕, 파리, 도쿄" /></div>
+      <div class="field"><label>숙소 이름</label><input class="inp" id="inp-accom-name" placeholder="숙소 이름" /></div>
+      <div class="field"><label>숙소 구글맵 링크</label><input class="inp" id="inp-accom-map" placeholder="https://maps.google.com/..." /></div>
       <div class="field">
         <label>지출 내역</label>
         <div id="expense-list-edit" style="margin-bottom:8px;"></div>
         <div class="expense-add-row">
-          <select class="inp expense-cat-select" id="inp-exp-cat">
+          <select class="inp" id="inp-exp-cat" style="flex:0 0 100px;">
             <option value="food">🍜 식비</option>
             <option value="transport">🚌 교통</option>
             <option value="lodging">🏨 숙박</option>
@@ -160,17 +159,31 @@
             <option value="etc">📦 기타</option>
           </select>
           <input class="inp" id="inp-exp-name" placeholder="항목명" style="flex:1;" />
-          <input type="number" class="inp" id="inp-exp-amount" placeholder="금액" style="width:90px;flex-shrink:0;" min="0" />
+          <input type="number" class="inp" id="inp-exp-amount" placeholder="금액" style="width:80px;flex-shrink:0;" min="0" />
+          <select class="inp" id="inp-exp-currency" style="flex:0 0 72px;">
+            <option value="KRW">₩ KRW</option>
+            <option value="USD">$ USD</option>
+            <option value="JPY">¥ JPY</option>
+            <option value="EUR">€ EUR</option>
+            <option value="THB">฿ THB</option>
+            <option value="VND">₫ VND</option>
+            <option value="SGD">S$ SGD</option>
+            <option value="GBP">£ GBP</option>
+          </select>
           <button class="btn sm icon-btn" id="btn-add-expense">+</button>
         </div>
       </div>
-
-      <div class="field"><label>메모 / 일기</label>
-        <textarea class="inp" id="inp-memo" rows="3" placeholder="오늘의 기록..."></textarea></div>
-
+      <div class="field">
+        <label style="cursor:pointer;" onclick="toggleMemoField()">
+          📝 메모 / 일기 <span id="memo-toggle-icon" style="color:var(--text-3);font-weight:400;">▼ 펼치기</span>
+        </label>
+        <div id="memo-field" style="display:none;">
+          <textarea class="inp" id="inp-memo" rows="3" placeholder="오늘의 기록..."></textarea>
+        </div>
+      </div>
       <div class="field"><label>To-Do 항목 (줄바꿈으로 구분)</label>
-        <textarea class="inp" id="inp-todos" rows="3" placeholder="박물관 예약&#10;환전하기"></textarea></div>
-
+        <textarea class="inp" id="inp-todos" rows="3" placeholder="박물관 예약&#10;환전하기"></textarea>
+      </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
         <button class="btn ghost" onclick="closeEditModal()">취소</button>
         <button class="btn accent" id="btn-save-day">저장</button>
@@ -191,29 +204,36 @@
     </div>
   </div>
 
-  <!-- 준비물 체크리스트 -->
+  <!-- 여행 통계 -->
+  <div class="modal" id="modal-stats" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal-card" style="width:min(480px,96vw);max-height:88vh;overflow-y:auto;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+        <div class="t-head">여행 통계</div>
+        <button class="btn ghost sm" onclick="document.getElementById('modal-stats').classList.remove('open')">닫기</button>
+      </div>
+      <div id="stats-content"></div>
+    </div>
+  </div>
+
+  <!-- 준비물 -->
   <div class="modal" id="modal-packing" onclick="if(event.target===this)this.classList.remove('open')">
     <div class="modal-card" style="width:min(500px,96vw);max-height:88vh;overflow-y:auto;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
         <div class="t-head">준비물 체크리스트</div>
         <button class="btn ghost sm" onclick="document.getElementById('modal-packing').classList.remove('open')">닫기</button>
       </div>
-
       <div class="packing-templates">
-        <span class="t-cap" style="margin-right:8px;">템플릿:</span>
+        <span class="t-cap" style="margin-right:6px;">템플릿:</span>
         <button class="btn sm ghost" id="tpl-basic">기본 여행</button>
         <button class="btn sm ghost" id="tpl-long">장기 여행</button>
         <button class="btn sm ghost" id="tpl-biz">비즈니스</button>
       </div>
-
       <div class="todo-add-row" style="margin:12px 0;">
         <input class="todo-add-inp" id="inp-packing-item" placeholder="준비물 추가..."
           onkeydown="if(event.key==='Enter')addPackingItem()" />
         <button class="btn sm icon-btn" onclick="addPackingItem()">+</button>
       </div>
-
       <ul class="todo-list" id="packing-list"></ul>
-
       <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--hairline);display:flex;justify-content:space-between;align-items:center;">
         <span class="t-cap" id="packing-progress"></span>
         <button class="btn sm danger" id="btn-clear-packing">완료 항목 삭제</button>
@@ -221,7 +241,6 @@
     </div>
   </div>
 
-  <!-- 토스트 -->
   <div class="toast" id="toast"></div>
 
 </body>
