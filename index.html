@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>oHtravel — 장기 여행 플래너</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Firebase v10 CDN -->
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+
+  <!-- ── NAV ── -->
+  <nav class="nav" id="nav">
+    <div class="brand"><b>oH</b>travel</div>
+    <div class="nav-end" id="nav-end">
+      <!-- 공유 모드일 때는 JS가 채움 -->
+    </div>
+  </nav>
+
+  <!-- ══════════════════════════════════════
+       VIEW 1: 대시보드 (여행 리스트)
+  ══════════════════════════════════════ -->
+  <div id="view-dashboard" class="view wrap" style="display:none;">
+
+    <header class="section">
+      <div class="t-large">내 여행 목록</div>
+      <p class="t-cap" style="margin-top:6px;font-size:.95rem;text-transform:none;letter-spacing:normal;">
+        등록된 여행을 선택하거나 새 여행을 추가하세요.
+      </p>
+    </header>
+
+    <!-- 새 여행 등록 버튼 -->
+    <div class="section" id="dashboard-actions">
+      <button class="btn accent" id="btn-new-trip">+ 새 여행 등록</button>
+    </div>
+
+    <!-- 오프라인 배너 -->
+    <div id="offline-banner" class="offline-banner" style="display:none;">
+      📴 오프라인 모드 — 캐시된 데이터를 표시합니다.
+    </div>
+
+    <!-- 여행 카드 목록 -->
+    <div id="trip-list" class="grid">
+      <!-- JS가 채움 -->
+    </div>
+
+    <div id="trip-list-empty" class="empty-state" style="display:none;">
+      <div class="empty-icon">🗺️</div>
+      <div class="t-head">등록된 여행이 없습니다</div>
+      <p class="t-cap">새 여행을 등록하여 계획을 시작하세요.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       VIEW 2: 상세 타임라인
+  ══════════════════════════════════════ -->
+  <div id="view-timeline" class="view wrap" style="display:none;">
+
+    <!-- 상단 헤더 -->
+    <header class="timeline-header section">
+      <button class="btn ghost btn-back" id="btn-back" style="display:none;">
+        ← 전체 여행 목록
+      </button>
+      <div id="trip-title-area">
+        <div id="trip-title-display" class="t-large"></div>
+        <div id="trip-date-range" class="t-cap" style="margin-top:4px;font-size:.9rem;text-transform:none;letter-spacing:normal;"></div>
+      </div>
+      <div class="timeline-header-actions" id="timeline-header-actions">
+        <!-- 공유 버튼, 편집 버튼 등 -->
+      </div>
+    </header>
+
+    <!-- 타임라인 카드 목록 -->
+    <div id="timeline-list">
+      <!-- JS가 채움 -->
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
+       MODALS
+  ══════════════════════════════════════ -->
+
+  <!-- 새 여행 등록 모달 -->
+  <div class="modal" id="modal-new-trip" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal-card">
+      <div class="t-head" style="margin-bottom:16px;">새 여행 등록</div>
+      <div class="field">
+        <label>여행 제목</label>
+        <input class="inp" id="inp-trip-title" placeholder="예: 2025 동남아 배낭여행" />
+      </div>
+      <div class="field">
+        <label>시작일</label>
+        <input type="date" class="inp" id="inp-trip-start" />
+      </div>
+      <div class="field">
+        <label>종료일</label>
+        <input type="date" class="inp" id="inp-trip-end" />
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+        <button class="btn ghost" id="btn-cancel-new-trip">취소</button>
+        <button class="btn accent" id="btn-save-new-trip">등록</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 날짜 카드 편집 모달 -->
+  <div class="modal" id="modal-edit-day" onclick="if(event.target===this)closeEditModal()">
+    <div class="modal-card" style="width:min(560px,95vw);">
+      <div class="t-head" style="margin-bottom:16px;" id="modal-day-title">— 일차 편집</div>
+
+      <div class="field">
+        <label>교통 메모</label>
+        <textarea class="inp" id="inp-transport" rows="3" placeholder="교통 수단, 예약번호, 시간 등"></textarea>
+      </div>
+      <div class="field">
+        <label>숙소 이름</label>
+        <input class="inp" id="inp-accom-name" placeholder="숙소 이름" />
+      </div>
+      <div class="field">
+        <label>숙소 구글맵 링크</label>
+        <input class="inp" id="inp-accom-map" placeholder="https://maps.google.com/..." />
+      </div>
+      <div class="field">
+        <label>To-Do 항목 (줄바꿈으로 구분)</label>
+        <textarea class="inp" id="inp-todos" rows="4" placeholder="환전하기&#10;현지 유심 구매&#10;박물관 예약"></textarea>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+        <button class="btn ghost" onclick="closeEditModal()">취소</button>
+        <button class="btn accent" id="btn-save-day">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 토스트 -->
+  <div class="toast" id="toast"></div>
+
+</body>
+</html>
