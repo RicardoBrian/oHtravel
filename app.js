@@ -24,7 +24,6 @@ const db  = getFirestore(app);
 //  상수
 // ══════════════════════════════════════
 const TRANS_ICONS  = { flight:'✈️', train:'🚆', ship:'⛴️', bus:'🚌' };
-const TRANS_LABELS = { flight:'비행기', train:'기차', ship:'배', bus:'버스' };
 const EXP_LABELS   = { food:'🍜 식비', transport:'🚌 교통', lodging:'🏨 숙박', sightseeing:'🎡 관광', shopping:'🛍️ 쇼핑', etc:'📦 기타' };
 const EXP_KEYS     = ['food','transport','lodging','sightseeing','shopping','etc'];
 const CURRENCIES   = { KRW:{s:'₩',n:'원'}, USD:{s:'$',n:'달러'}, JPY:{s:'¥',n:'엔'}, EUR:{s:'€',n:'유로'}, THB:{s:'฿',n:'바트'}, VND:{s:'₫',n:'동'}, SGD:{s:'S$',n:'싱가포르달러'}, GBP:{s:'£',n:'파운드'} };
@@ -37,15 +36,58 @@ const PACKING_TEMPLATES = {
 
 const WC_EMOJI = {0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',77:'❄️',80:'🌦️',81:'🌧️',82:'⛈️',85:'🌨️',86:'❄️',95:'⛈️',96:'⛈️',99:'⛈️'};
 
+// IATA 공항코드 → 국기
+const IATA_FLAGS = {
+  ICN:'🇰🇷',GMP:'🇰🇷',PUS:'🇰🇷',CJU:'🇰🇷',RSU:'🇰🇷',KWJ:'🇰🇷',TAE:'🇰🇷',
+  NRT:'🇯🇵',HND:'🇯🇵',KIX:'🇯🇵',ITM:'🇯🇵',CTS:'🇯🇵',FUK:'🇯🇵',OKA:'🇯🇵',NGO:'🇯🇵',SDJ:'🇯🇵',
+  PEK:'🇨🇳',PKX:'🇨🇳',PVG:'🇨🇳',SHA:'🇨🇳',CAN:'🇨🇳',CTU:'🇨🇳',SZX:'🇨🇳',WUH:'🇨🇳',XIY:'🇨🇳',
+  BKK:'🇹🇭',DMK:'🇹🇭',HKT:'🇹🇭',CNX:'🇹🇭',USM:'🇹🇭',KBV:'🇹🇭',HDY:'🇹🇭',
+  SGN:'🇻🇳',HAN:'🇻🇳',DAD:'🇻🇳',PQC:'🇻🇳',VCA:'🇻🇳',
+  SIN:'🇸🇬',
+  CGK:'🇮🇩',DPS:'🇮🇩',SUB:'🇮🇩',MDC:'🇮🇩',LOP:'🇮🇩',PLM:'🇮🇩',
+  KUL:'🇲🇾',PEN:'🇲🇾',LGK:'🇲🇾',BKI:'🇲🇾',KCH:'🇲🇾',
+  MNL:'🇵🇭',CEB:'🇵🇭',KLO:'🇵🇭',ILO:'🇵🇭',DVO:'🇵🇭',
+  TPE:'🇹🇼',TSA:'🇹🇼',KHH:'🇹🇼',TNN:'🇹🇼',
+  HKG:'🇭🇰', MFM:'🇲🇴',
+  DEL:'🇮🇳',BOM:'🇮🇳',BLR:'🇮🇳',MAA:'🇮🇳',CCU:'🇮🇳',HYD:'🇮🇳',
+  KTM:'🇳🇵', CMB:'🇱🇰', MLE:'🇲🇻', DAC:'🇧🇩',
+  PNH:'🇰🇭',REP:'🇰🇭', RGN:'🇲🇲',MDL:'🇲🇲', VTE:'🇱🇦', BWN:'🇧🇳',
+  JFK:'🇺🇸',LAX:'🇺🇸',SFO:'🇺🇸',ORD:'🇺🇸',ATL:'🇺🇸',MIA:'🇺🇸',SEA:'🇺🇸',BOS:'🇺🇸',LAS:'🇺🇸',DFW:'🇺🇸',DEN:'🇺🇸',HNL:'🇺🇸',IAD:'🇺🇸',EWR:'🇺🇸',LGA:'🇺🇸',
+  LHR:'🇬🇧',LGW:'🇬🇧',STN:'🇬🇧',MAN:'🇬🇧',EDI:'🇬🇧',BHX:'🇬🇧',
+  CDG:'🇫🇷',ORY:'🇫🇷',NCE:'🇫🇷',LYS:'🇫🇷',MRS:'🇫🇷',
+  FRA:'🇩🇪',MUC:'🇩🇪',BER:'🇩🇪',DUS:'🇩🇪',HAM:'🇩🇪',STR:'🇩🇪',CGN:'🇩🇪',
+  FCO:'🇮🇹',MXP:'🇮🇹',VCE:'🇮🇹',NAP:'🇮🇹',PSA:'🇮🇹',BGY:'🇮🇹',BLQ:'🇮🇹',
+  MAD:'🇪🇸',BCN:'🇪🇸',AGP:'🇪🇸',PMI:'🇪🇸',VLC:'🇪🇸',SVQ:'🇪🇸',
+  AMS:'🇳🇱', ZRH:'🇨🇭',GVA:'🇨🇭', VIE:'🇦🇹', BRU:'🇧🇪',
+  LIS:'🇵🇹',OPO:'🇵🇹', ATH:'🇬🇷',SKG:'🇬🇷',HER:'🇬🇷',RHO:'🇬🇷',CFU:'🇬🇷',
+  IST:'🇹🇷',SAW:'🇹🇷',AYT:'🇹🇷',ADB:'🇹🇷',ESB:'🇹🇷',
+  DXB:'🇦🇪',AUH:'🇦🇪',SHJ:'🇦🇪', DOH:'🇶🇦', RUH:'🇸🇦',JED:'🇸🇦',
+  TLV:'🇮🇱', AMM:'🇯🇴', BEY:'🇱🇧', CAI:'🇪🇬',HRG:'🇪🇬',SSH:'🇪🇬',
+  SYD:'🇦🇺',MEL:'🇦🇺',BNE:'🇦🇺',PER:'🇦🇺',ADL:'🇦🇺',CNS:'🇦🇺',
+  AKL:'🇳🇿',CHC:'🇳🇿',WLG:'🇳🇿',
+  YYZ:'🇨🇦',YVR:'🇨🇦',YUL:'🇨🇦',YYC:'🇨🇦',
+  MEX:'🇲🇽',CUN:'🇲🇽',GDL:'🇲🇽',
+  GRU:'🇧🇷',GIG:'🇧🇷',BSB:'🇧🇷',
+  EZE:'🇦🇷',AEP:'🇦🇷',
+  SVO:'🇷🇺',DME:'🇷🇺',LED:'🇷🇺',
+  PRG:'🇨🇿', BUD:'🇭🇺', WAW:'🇵🇱',KRK:'🇵🇱',
+  ARN:'🇸🇪',GOT:'🇸🇪', OSL:'🇳🇴', CPH:'🇩🇰', HEL:'🇫🇮',
+  CMN:'🇲🇦',RAK:'🇲🇦', JNB:'🇿🇦',CPT:'🇿🇦', NBO:'🇰🇪', ADD:'🇪🇹',
+  DAR:'🇹🇿',JRO:'🇹🇿',
+};
+
 const LS_TRIPS   = 'ohtravel_trips';
 const LS_DAYS    = id => `ohtravel_days_${id}`;
 const LS_TRANS   = id => `ohtravel_trans_${id}`;
 const LS_WEATHER = id => `ohtravel_weather_${id}`;
 const LS_FX      = 'ohtravel_fx';
+const LS_CONFIG  = 'ohtravel_config';
 
 // ══════════════════════════════════════
 //  상태
 // ══════════════════════════════════════
+let isAuthed       = sessionStorage.getItem('ohtravel_authed') === '1';
+let isAdminMode    = false;
 let currentTripId  = null;
 let isReadOnly     = false;
 let isOnline       = navigator.onLine;
@@ -55,20 +97,84 @@ let unsubTrans     = null;
 let editingTransId = null;
 let editingExpenses= [];
 let currentTripRef = null;
-let fxRates        = null; // USD 기준 환율
+let fxRates        = null;
+let collapsedDays  = new Set();
+let pendingDelete  = null;
 
 // ══════════════════════════════════════
 //  유틸
 // ══════════════════════════════════════
 const $ = id => document.getElementById(id);
 
-function showToast(msg) {
-  const el = $('toast'); el.textContent = msg; el.classList.add('show');
-  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 2600);
+function showToast(msg, withUndo = false) {
+  const el = $('toast');
+  $('toast-msg').textContent = msg;
+  const undoBtn = $('toast-undo');
+  undoBtn.style.display = withUndo ? '' : 'none';
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), withUndo ? 5000 : 2600);
+}
+
+window.undoDelete = function() {
+  if (!pendingDelete) return;
+  clearTimeout(pendingDelete.timerId);
+  const p = pendingDelete; pendingDelete = null;
+  $('toast').classList.remove('show');
+  if (p.type === 'trip') {
+    // Item still in localStorage — just re-render
+    renderTripListFromCache();
+    showToast('삭제 취소됨');
+  } else if (p.type === 'transport') {
+    // Restore to localStorage
+    const list = JSON.parse(localStorage.getItem(LS_TRANS(p.tripId)) || '[]');
+    list.push(p.data);
+    localStorage.setItem(LS_TRANS(p.tripId), JSON.stringify(list));
+    redrawTimeline(p.tripId);
+    showToast('삭제 취소됨');
+  }
+};
+
+function scheduleDelete(type, id, data, tripId) {
+  if (pendingDelete) {
+    clearTimeout(pendingDelete.timerId);
+    executePendingDelete(pendingDelete);
+  }
+  const timerId = setTimeout(() => {
+    executePendingDelete(pendingDelete);
+    pendingDelete = null;
+  }, 5000);
+  pendingDelete = { type, id, data, tripId, timerId };
+}
+
+async function executePendingDelete(item) {
+  if (!item) return;
+  try {
+    if (item.type === 'trip') {
+      // Remove from localStorage
+      const raw = localStorage.getItem(LS_TRIPS);
+      if (raw) {
+        const trips = JSON.parse(raw).filter(t => t.id !== item.id);
+        localStorage.setItem(LS_TRIPS, JSON.stringify(trips));
+      }
+      await deleteDoc(doc(db, 'trips', item.id));
+    } else if (item.type === 'transport') {
+      await deleteDoc(doc(db, 'trips', item.tripId, 'transports', item.id));
+    }
+  } catch { /* 삭제 실패 무시 */ }
 }
 
 function escHtml(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function autoLink(text) {
+  const parts = String(text).split(/(https?:\/\/[^\s<>"']+)/g);
+  return parts.map((part, i) =>
+    i % 2 === 1
+      ? `<a href="${escHtml(part)}" target="_blank" rel="noopener" class="auto-link">${escHtml(part)}</a>`
+      : escHtml(part)
+  ).join('');
 }
 
 function fmtDate(d) {
@@ -81,7 +187,14 @@ function fmtDateShort(d) {
 }
 function fmtMoney(n) { return Number(n).toLocaleString('ko-KR') + '원'; }
 function isToday(d) { return d === new Date().toISOString().slice(0,10); }
+function isPast(d)  { return d < new Date().toISOString().slice(0,10); }
 function genId()    { return Math.random().toString(36).slice(2,10); }
+
+function getAirportFlag(code) {
+  if (!code) return '';
+  const upper = code.trim().toUpperCase();
+  return IATA_FLAGS[upper] ? IATA_FLAGS[upper] + ' ' : '';
+}
 
 function calcDDay(s, e) {
   const today = new Date(); today.setHours(0,0,0,0);
@@ -123,17 +236,107 @@ function fmtExpenseAmount(amount, currency) {
 }
 
 // ══════════════════════════════════════
+//  접근 제어
+// ══════════════════════════════════════
+async function getAccessConfig() {
+  // Try Firestore, fallback to localStorage cache, then defaults
+  try {
+    const snap = await getDoc(doc(db, 'config', 'access'));
+    const cfg = snap.exists() ? snap.data() : {};
+    const result = {
+      entryCode:     cfg.entryCode     || '961002',
+      adminPassword: cfg.adminPassword || 'qjatjrdl1',
+    };
+    localStorage.setItem(LS_CONFIG, JSON.stringify(result));
+    return result;
+  } catch {
+    const cached = localStorage.getItem(LS_CONFIG);
+    if (cached) return JSON.parse(cached);
+    return { entryCode: '961002', adminPassword: 'qjatjrdl1' };
+  }
+}
+
+function showEntryScreen() {
+  $('screen-entry').classList.remove('hidden');
+}
+function hideEntryScreen() {
+  $('screen-entry').classList.add('hidden');
+}
+
+async function handleEntrySubmit() {
+  const code = $('inp-entry-code').value.trim();
+  if (!code) return;
+  const cfg = await getAccessConfig();
+  if (code === cfg.entryCode) {
+    sessionStorage.setItem('ohtravel_authed', '1');
+    isAuthed = true;
+    hideEntryScreen();
+    boot();
+  } else {
+    $('entry-error').style.display = '';
+    $('inp-entry-code').value = '';
+    $('inp-entry-code').focus();
+    setTimeout(() => { $('entry-error').style.display = 'none'; }, 3000);
+  }
+}
+
+// ── 관리자 인증 ──
+function openAdminAuth() {
+  $('inp-admin-password').value = '';
+  $('admin-auth-error').style.display = 'none';
+  $('modal-admin-auth').classList.add('open');
+  setTimeout(() => $('inp-admin-password').focus(), 100);
+}
+
+async function verifyAdmin() {
+  const pw = $('inp-admin-password').value.trim();
+  const cfg = await getAccessConfig();
+  if (pw === cfg.adminPassword) {
+    $('modal-admin-auth').classList.remove('open');
+    isAdminMode = true;
+    $('inp-new-entry-code').value   = '';
+    $('inp-new-admin-pw').value     = '';
+    $('modal-admin-panel').classList.add('open');
+  } else {
+    $('admin-auth-error').style.display = '';
+    $('inp-admin-password').value = '';
+    setTimeout(() => { $('admin-auth-error').style.display = 'none'; }, 3000);
+  }
+}
+
+async function saveAdminSettings() {
+  const newCode = $('inp-new-entry-code').value.trim();
+  const newPw   = $('inp-new-admin-pw').value.trim();
+  if (!newCode && !newPw) { showToast('변경할 내용을 입력하세요'); return; }
+  const cfg = await getAccessConfig();
+  const updated = {
+    entryCode:     newCode || cfg.entryCode,
+    adminPassword: newPw   || cfg.adminPassword,
+  };
+  try {
+    await setDoc(doc(db, 'config', 'access'), updated);
+    localStorage.setItem(LS_CONFIG, JSON.stringify(updated));
+    $('modal-admin-panel').classList.remove('open');
+    showToast('설정 저장됨 ✓');
+  } catch(err) {
+    showToast('저장 실패: ' + (err?.message || err));
+  }
+}
+
+// ══════════════════════════════════════
 //  다크 모드 & 온라인
 // ══════════════════════════════════════
 function initDarkToggle() {
-  const ne = $('nav-end'); ne.innerHTML = '';
+  const ne = $('nav-end');
+  // Remove existing toggle if any
+  ne.querySelectorAll('.dark-toggle').forEach(el => el.remove());
   const t = document.createElement('div'); t.className = 'dark-toggle'; t.title = '다크모드';
   t.onclick = () => { document.body.classList.toggle('dark'); localStorage.setItem('ohtravel_dark', document.body.classList.contains('dark')?'1':'0'); };
   ne.appendChild(t);
   if (localStorage.getItem('ohtravel_dark') === '1') document.body.classList.add('dark');
 }
-window.addEventListener('online',  () => { isOnline = true;  $('offline-banner').style.display='none'; });
-window.addEventListener('offline', () => { isOnline = false; $('offline-banner').style.display='block'; });
+window.addEventListener('online',  () => { isOnline = true;  const b=$('offline-banner'); if(b) b.style.display='none'; });
+window.addEventListener('offline', () => { isOnline = false; const b=$('offline-banner'); if(b) b.style.display='block'; });
 
 // ══════════════════════════════════════
 //  라우팅
@@ -145,6 +348,8 @@ function navigate(tripId, shareMode=false) {
 }
 window.addEventListener('popstate', boot);
 function boot() {
+  if (!isAuthed) { showEntryScreen(); return; }
+  hideEntryScreen();
   const { tripId, view } = parseURL();
   isReadOnly = view === 'share';
   if (tripId) { currentTripId = tripId; showTimelineView(tripId); }
@@ -195,17 +400,22 @@ function renderTripList(trips) {
       ${budgetBadge ? `<div>${budgetBadge}</div>` : ''}
       <div class="trip-card-actions">
         <button class="btn sm icon-btn btn-packing-card" data-id="${trip.id}">🎒 준비물</button>
+        <button class="btn sm icon-btn btn-dup-card" data-id="${trip.id}">📋 복제</button>
         <button class="btn sm icon-btn btn-share-card" data-id="${trip.id}">🔗 공유</button>
         <button class="btn sm danger btn-del-trip" data-id="${trip.id}">삭제</button>
       </div>`;
     card.addEventListener('click', e => {
-      if (e.target.closest('.btn-packing-card,.btn-share-card,.btn-del-trip')) return;
+      if (e.target.closest('.btn-packing-card,.btn-dup-card,.btn-share-card,.btn-del-trip')) return;
       navigate(trip.id);
     });
     card.querySelector('.btn-packing-card').addEventListener('click', e => {
       e.stopPropagation();
       currentTripRef = trip; currentTripId = trip.id;
       openPackingModal(trip.id);
+    });
+    card.querySelector('.btn-dup-card').addEventListener('click', e => {
+      e.stopPropagation();
+      duplicateTrip(trip);
     });
     card.querySelector('.btn-share-card').addEventListener('click', e => {
       e.stopPropagation();
@@ -215,11 +425,27 @@ function renderTripList(trips) {
     card.querySelector('.btn-del-trip').addEventListener('click', async e => {
       e.stopPropagation();
       if (!confirm(`"${trip.title}" 여행을 삭제할까요?`)) return;
-      try { await deleteDoc(doc(db,'trips',trip.id)); showToast('삭제되었습니다'); }
-      catch(err) { showToast('삭제 실패: ' + (err?.message||err)); }
+      // Optimistically remove card from DOM
+      card.style.display = 'none';
+      scheduleDelete('trip', trip.id, trip, null);
+      showToast(`"${escHtml(trip.title)}" 삭제됨`, true);
     });
     list.appendChild(card);
   });
+}
+
+// ── 여행 복제 ──
+async function duplicateTrip(trip) {
+  try {
+    await addDoc(collection(db,'trips'), {
+      title:     (trip.title || '여행') + ' (복사)',
+      startDate: trip.startDate,
+      endDate:   trip.endDate,
+      budget:    trip.budget || 0,
+      createdAt: serverTimestamp(),
+    });
+    showToast('여행 복제됨 ✓');
+  } catch(err) { showToast('복제 실패: ' + (err?.message||err)); }
 }
 
 // ── 새 여행 등록 ──
@@ -264,7 +490,6 @@ async function saveEditTrip(tripId) {
   if (raw) { const trips = JSON.parse(raw).map(t => t.id===tripId ? {...t,title,startDate:start,endDate:end} : t); localStorage.setItem(LS_TRIPS, JSON.stringify(trips)); }
   try { await updateDoc(doc(db,'trips',tripId), {title, startDate:start, endDate:end}); showToast('여행 정보 저장됨 ✓'); }
   catch { showToast('오프라인 — 로컬 저장됨'); }
-  // 날짜 변경 시 타임라인 재렌더
   const dayData   = JSON.parse(localStorage.getItem(LS_DAYS(tripId)) || '{}');
   const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId)) || '[]');
   const weather   = JSON.parse(localStorage.getItem(LS_WEATHER(tripId)) || '{}');
@@ -280,7 +505,6 @@ async function showTimelineView(tripId) {
   initDarkToggle();
   if (unsubTrips) { unsubTrips(); unsubTrips = null; }
 
-  // 여행 데이터 로드
   let trip = null;
   if (isOnline) { try { const s = await getDoc(doc(db,'trips',tripId)); if (s.exists()) trip = {id:s.id,...s.data()}; } catch {} }
   if (!trip)    { const r = localStorage.getItem(LS_TRIPS); trip = r ? JSON.parse(r).find(t=>t.id===tripId) : null; }
@@ -291,32 +515,48 @@ async function showTimelineView(tripId) {
   $('trip-date-range').textContent = `${fmtDate(trip.startDate)} ~ ${fmtDate(trip.endDate)}`;
 
   const editTripBtn = $('btn-edit-trip');
-  const actions     = $('timeline-header-actions');
 
   if (isReadOnly) {
     $('btn-back').style.display = 'none';
     editTripBtn.style.display   = 'none';
-    actions.innerHTML = `<div class="readonly-banner">🔒 읽기 전용 공유 모드</div>`;
+    $('timeline-header-actions').innerHTML = `<div class="readonly-banner">🔒 읽기 전용 공유 모드</div>`;
+    $('timeline-sidebar').innerHTML = '';
   } else {
     $('btn-back').style.display = '';
     editTripBtn.style.display   = '';
     editTripBtn.onclick = () => openEditTripModal(tripId);
-    actions.innerHTML = `
-      <button class="btn sm" id="btn-add-transport">✈️ 교통 등록</button>
-      <button class="btn sm" id="btn-bulk-accom">🏨 숙소 일괄</button>
-      <button class="btn sm" id="btn-packing">🎒 준비물</button>
-      <button class="btn sm" id="btn-budget-open">💰 예산 설정</button>
-      <button class="btn sm" id="btn-stats">📊 통계</button>
-      <button class="btn sm" id="btn-copy-share">🔗 공유</button>`;
-    $('btn-add-transport').onclick = () => openTransportModal(null, tripId);
-    $('btn-bulk-accom').onclick    = () => openBulkAccomModal(tripId);
-    $('btn-packing').onclick       = () => openPackingModal(tripId);
-    $('btn-budget-open').onclick   = () => openBudgetModal(tripId);
-    $('btn-stats').onclick         = () => openStatsModal(tripId);
-    $('btn-copy-share').onclick    = () => {
-      const url = `${location.origin}${location.pathname}?tripId=${tripId}&view=share`;
-      navigator.clipboard.writeText(url).then(() => showToast('공유 링크 복사됨'));
+
+    const actionBtnsHtml = `
+      <button class="btn sm" data-action="transport">✈️ 교통 등록</button>
+      <button class="btn sm" data-action="bulk-accom">🏨 숙소 일괄</button>
+      <button class="btn sm" data-action="packing">🎒 준비물</button>
+      <button class="btn sm" data-action="budget">💰 예산 설정</button>
+      <button class="btn sm" data-action="stats">📊 통계</button>
+      <button class="btn sm" data-action="share">🔗 공유</button>
+      <button class="btn sm" data-action="print">🖨️ 인쇄</button>`;
+
+    $('timeline-header-actions').innerHTML = actionBtnsHtml;
+    $('timeline-sidebar').innerHTML = actionBtnsHtml;
+
+    const bindActions = container => {
+      container.addEventListener('click', e => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const a = btn.dataset.action;
+        if      (a==='transport')  openTransportModal(null, tripId);
+        else if (a==='bulk-accom') openBulkAccomModal(tripId);
+        else if (a==='packing')    openPackingModal(tripId);
+        else if (a==='budget')     openBudgetModal(tripId);
+        else if (a==='stats')      openStatsModal(tripId);
+        else if (a==='share') {
+          const url = `${location.origin}${location.pathname}?tripId=${tripId}&view=share`;
+          navigator.clipboard.writeText(url).then(() => showToast('공유 링크 복사됨'));
+        }
+        else if (a==='print') window.print();
+      });
     };
+    bindActions($('timeline-header-actions'));
+    bindActions($('timeline-sidebar'));
   }
 
   const days = generateDays(trip.startDate, trip.endDate);
@@ -348,9 +588,24 @@ function listenTimeline(tripId, days, trip) {
 
   unsubTrans = onSnapshot(collection(db,'trips',tripId,'transports'), snap => {
     transData = []; snap.forEach(d => transData.push({id:d.id,...d.data()}));
+    // 시간순 정렬
+    transData.sort((a,b) => {
+      const da = (a.departDate||'') + (a.departTime||'');
+      const db2 = (b.departDate||'') + (b.departTime||'');
+      return da.localeCompare(db2);
+    });
     localStorage.setItem(LS_TRANS(tripId), JSON.stringify(transData));
     redraw();
   }, () => { transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]'); redraw(); });
+}
+
+function redrawTimeline(tripId) {
+  if (!currentTripRef) return;
+  const dayData   = JSON.parse(localStorage.getItem(LS_DAYS(tripId)) || '{}');
+  const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId)) || '[]');
+  const weather   = JSON.parse(localStorage.getItem(LS_WEATHER(tripId)) || '{}');
+  renderTimeline(generateDays(currentTripRef.startDate, currentTripRef.endDate), dayData, transData, weather, tripId);
+  updateBudgetBar(currentTripRef, dayData);
 }
 
 // ── 예산 바 ──
@@ -375,42 +630,117 @@ function calcTotalSpentKRW(dayData) {
 // ══════════════════════════════════════
 function renderTimeline(days, dayData, transData, weather, tripId) {
   const container = $('timeline-list'); container.innerHTML = '';
+  const today = new Date().toISOString().slice(0,10);
+
+  // 숙소 미정 요약
+  renderMissingAccomSummary(days, dayData);
+
+  // 날짜 이동 드롭다운
+  renderDateJump(days);
+
   days.forEach(({ date, dayIndex }) => {
     const data     = dayData[date] || {};
-    const dayTrans = transData.filter(t => t.departDate <= date && t.arriveDate >= date);
-    const w        = weather[data.city]?.[date];
-    container.appendChild(buildDayCard(date, dayIndex, data, dayTrans, w, tripId));
+    // Transport: filter and sort by departDate, then departTime
+    const dayTrans = transData
+      .filter(t => t.departDate <= date && t.arriveDate >= date)
+      .sort((a,b) => ((a.departDate||'')+(a.departTime||'')).localeCompare((b.departDate||'')+(b.departTime||'')));
+
+    const w = weather[data.city]?.[date];
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'day-row';
+
+    const dot = document.createElement('div');
+    dot.className = `timeline-dot${isToday(date)?' today-dot':isPast(date)?' past-dot':''}`;
+    wrapper.appendChild(dot);
+    wrapper.appendChild(buildDayCard(date, dayIndex, data, dayTrans, w, tripId));
+    container.appendChild(wrapper);
   });
-  const todayCard = container.querySelector('.today');
+
+  // 오늘 카드로 스크롤
+  const todayCard = container.querySelector(`#day-${today}`);
   if (todayCard) setTimeout(() => todayCard.scrollIntoView({behavior:'smooth',block:'start'}), 300);
+}
+
+function renderMissingAccomSummary(days, dayData) {
+  const el = $('accom-missing-summary');
+  if (isReadOnly) { el.innerHTML = ''; return; }
+  const today = new Date().toISOString().slice(0,10);
+  const missing = days.filter(d => d.date >= today && !dayData[d.date]?.accommodation);
+  if (!missing.length) { el.innerHTML = ''; return; }
+  const preview = missing.slice(0,3).map(d => fmtDateShort(d.date)).join(', ');
+  const more = missing.length > 3 ? ` 외 ${missing.length-3}건` : '';
+  el.innerHTML = `<div class="missing-accom-banner" title="클릭 시 첫 미정 날짜로 이동">🏨 숙소 미정 <strong>${missing.length}일</strong> — ${preview}${more}</div>`;
+  el.querySelector('.missing-accom-banner').onclick = () => {
+    const card = document.getElementById(`day-${missing[0].date}`);
+    if (card) card.scrollIntoView({behavior:'smooth',block:'start'});
+  };
+}
+
+function renderDateJump(days) {
+  const wrap = $('date-jump-wrap');
+  if (days.length < 5) { wrap.innerHTML = ''; return; }
+  const select = document.createElement('select');
+  select.className = 'inp date-jump-select';
+  select.innerHTML = `<option value="">📅 날짜 이동...</option>` +
+    days.map(d => `<option value="${d.date}">Day ${d.dayIndex} · ${fmtDateShort(d.date)}</option>`).join('');
+  select.onchange = () => {
+    if (!select.value) return;
+    const card = document.getElementById(`day-${select.value}`);
+    if (card) card.scrollIntoView({behavior:'smooth',block:'start'});
+    setTimeout(() => { select.value = ''; }, 100);
+  };
+  wrap.innerHTML = '';
+  wrap.appendChild(select);
 }
 
 function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId) {
   const card = document.createElement('div');
-  card.className = `day-card${isToday(date)?' today':''}`;
+  const hasMissingAccom = !data.accommodation;
+  const isTravelDay = dayTrans.some(t => t.departDate === date || t.arriveDate === date);
+  const isCollapsed = collapsedDays.has(date);
+
+  let cls = 'day-card';
+  if (isToday(date)) cls += ' today';
+  if (isTravelDay)   cls += ' travel-day';
+  if (hasMissingAccom && !isReadOnly) cls += ' missing-accom';
+  if (isCollapsed)   cls += ' collapsed';
+  card.className = cls;
+  card.id = `day-${date}`;
 
   // 헤더
   const cityTag      = data.city ? `<span class="city-tag">📍 ${escHtml(data.city)}</span>` : '';
   const weatherBadge = weather
     ? `<span class="weather-badge">${WC_EMOJI[weather.code]||'🌡️'} ${weather.max}° / ${weather.min}°</span>`
-    : (data.city ? '' : `<span class="weather-hint">📍 도시 입력 시 날씨 표시</span>`);
+    : (data.city ? '' : '');
+  const missingBadge = hasMissingAccom && !isReadOnly
+    ? `<span class="missing-accom-badge">숙소 미입력</span>` : '';
   const editBtn = isReadOnly ? '' : `<button class="btn sm icon-btn day-edit-btn" onclick="openEditModal('${date}','${tripId}')">편집</button>`;
+  const collapseBtn = `<button class="btn sm icon-btn collapse-btn" onclick="toggleDayCollapse('${date}',event)">${isCollapsed?'▼':'▲'}</button>`;
+
+  const themeHtml = data.theme
+    ? `<div class="day-theme-display">✨ ${escHtml(data.theme)}</div>` : '';
 
   // 교통
   const transHtml = dayTrans.length
     ? dayTrans.map(t => {
         const isDepart = t.departDate===date, isArrive = t.arriveDate===date;
         const badge = (!isDepart&&!isArrive) ? '<span class="transit-day-badge">이동 중</span>' : '';
-        const timeStr = [isDepart&&t.departTime?`출발 ${t.departTime}`:'', isArrive&&t.arriveTime?`도착 ${t.arriveTime}`:''].filter(Boolean).join(' / ');
+        const timeStr = [
+          isDepart&&t.departTime?`출발 ${t.departTime}`:'',
+          isArrive&&t.arriveTime?`도착 ${t.arriveTime}`:''
+        ].filter(Boolean).join(' / ');
+        const fromFlag = getAirportFlag(t.fromCity);
+        const toFlag   = getAirportFlag(t.toCity);
         const editBtn2 = isReadOnly?'':
           `<button class="btn sm icon-btn" onclick="openTransportModal('${t.id}','${tripId}')">편집</button>` +
           `<button class="btn sm danger" onclick="deleteTransport('${t.id}','${tripId}')">삭제</button>`;
         return `
           <div class="transport-item">
-            <div class="transport-route">${TRANS_ICONS[t.type]||'🚗'} <b>${escHtml(t.fromCity||'?')}</b><span class="arrow">→</span><b>${escHtml(t.toCity||'?')}</b>${badge}</div>
-            ${timeStr?`<div class="transport-meta">${timeStr}</div>`:''}
+            <div class="transport-route">${TRANS_ICONS[t.type]||'🚗'} <b>${fromFlag}${escHtml(t.fromCity||'?')}</b><span class="arrow">→</span><b>${toFlag}${escHtml(t.toCity||'?')}</b>${badge}</div>
+            ${timeStr?`<div class="transport-meta">🕐 ${timeStr}</div>`:''}
             ${t.bookingNo?`<div class="transport-booking">📋 ${escHtml(t.bookingNo)}</div>`:''}
-            ${t.memo?`<div class="transport-booking" style="color:var(--text-2)">${escHtml(t.memo)}</div>`:''}
+            ${t.memo?`<div class="transport-booking" style="color:var(--text-2)">💬 ${escHtml(t.memo)}</div>`:''}
             <div class="transport-actions">
               <button class="btn sm icon-btn" onclick="copyTransport('${escHtml(t.fromCity||'')}','${escHtml(t.toCity||'')}','${escHtml(t.bookingNo||'')}')">복사</button>
               ${editBtn2}
@@ -438,8 +768,10 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId) {
         </div>`).join('')}</div><div class="expense-total">합계 ${fmtMoney(expTotalKRW)}</div>`
     : `<div class="t-cap" style="color:var(--text-3);font-style:italic;">지출 없음</div>`;
 
-  // 메모
-  const memoHtml = data.memo ? `<div class="memo-box">${escHtml(data.memo)}</div>` : `<div class="t-cap" style="color:var(--text-3);font-style:italic;">메모 없음</div>`;
+  // 메모 (자동 링크)
+  const memoHtml = data.memo
+    ? `<div class="memo-box">${autoLink(data.memo)}</div>`
+    : `<div class="t-cap" style="color:var(--text-3);font-style:italic;">메모 없음</div>`;
 
   // To-Do
   const todos     = data.todos || [];
@@ -457,22 +789,48 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId) {
       <button class="btn sm icon-btn" onclick="addTodo('${tripId}','${date}')">+</button>
     </div>`;
 
+  // 요약 줄 (접힌 상태)
+  const summaryParts = [
+    data.city || '도시 미정',
+    data.accommodation ? data.accommodation : '숙소 미정',
+    dayTrans.length ? `교통 ${dayTrans.length}건` : '',
+    expenses.length ? `지출 ${fmtMoney(expTotalKRW)}` : '',
+  ].filter(Boolean);
+
   card.innerHTML = `
-    <div class="day-card-header">
+    <div class="day-card-header" onclick="toggleDayCollapse('${date}',event)">
       <div class="day-label-group">
         <span class="day-label">Day ${dayIndex}</span>
         <span class="day-label-date">${fmtDateShort(date)}</span>
-        ${cityTag}${weatherBadge}
+        ${cityTag}${weatherBadge}${missingBadge}
       </div>
-      ${editBtn}
+      <div class="day-header-actions" onclick="event.stopPropagation()">
+        ${editBtn}
+        ${collapseBtn}
+      </div>
     </div>
-    <div class="day-section"><div class="day-section-label">✈️ 교통</div>${transHtml}</div>
-    <div class="day-section"><div class="day-section-label">🏨 숙소</div>${accomHtml}</div>
-    <div class="day-section"><div class="day-section-label">💰 지출</div>${expHtml}</div>
-    <div class="day-section"><div class="day-section-label">📝 메모</div>${memoHtml}</div>
-    <div class="day-section"><div class="day-section-label">✅ To-Do</div><ul ${todoClass}>${todoItems}</ul>${addTodoRow}</div>`;
+    ${themeHtml}
+    <div class="day-card-summary">${summaryParts.join(' · ')}</div>
+    <div class="day-sections">
+      <div class="day-section"><div class="day-section-label">✈️ 교통</div>${transHtml}</div>
+      <div class="day-section"><div class="day-section-label">🏨 숙소</div>${accomHtml}</div>
+      <div class="day-section"><div class="day-section-label">💰 지출</div>${expHtml}</div>
+      <div class="day-section"><div class="day-section-label">📝 메모</div>${memoHtml}</div>
+      <div class="day-section"><div class="day-section-label">✅ To-Do</div><ul ${todoClass}>${todoItems}</ul>${addTodoRow}</div>
+    </div>`;
   return card;
 }
+
+window.toggleDayCollapse = function(date, e) {
+  if (e) e.stopPropagation();
+  const card = document.getElementById(`day-${date}`);
+  if (!card) return;
+  if (collapsedDays.has(date)) collapsedDays.delete(date);
+  else collapsedDays.add(date);
+  card.classList.toggle('collapsed', collapsedDays.has(date));
+  const btn = card.querySelector('.collapse-btn');
+  if (btn) btn.textContent = collapsedDays.has(date) ? '▼' : '▲';
+};
 
 // ══════════════════════════════════════
 //  날씨
@@ -490,14 +848,12 @@ async function fetchWeatherForTrip(trip, dayData, tripId) {
       const maxDate = new Date(Date.now()+15*86400000).toISOString().slice(0,10);
       if (!result[city]) result[city] = {};
 
-      // forecast
       const fs = trip.startDate > today ? trip.startDate : today;
       const fe = trip.endDate   < maxDate ? trip.endDate : maxDate;
       if (fs <= fe) {
         const fj = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${fs}&end_date=${fe}`)).json();
         fj.daily?.time?.forEach((d,i) => { result[city][d] = {code:fj.daily.weathercode[i],max:Math.round(fj.daily.temperature_2m_max[i]),min:Math.round(fj.daily.temperature_2m_min[i])}; });
       }
-      // archive (past)
       const ae = trip.endDate < today ? trip.endDate : new Date(Date.now()-86400000).toISOString().slice(0,10);
       if (trip.startDate <= ae) {
         const aj = await (await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${trip.startDate}&end_date=${ae}`)).json();
@@ -547,8 +903,13 @@ async function saveTransport(tripId) {
   if (payload.departDate > payload.arriveDate)  { showToast('도착일이 출발일보다 빠릅니다'); return; }
   closeTransportModal();
   const list = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
-  if (editingTransId) { const i=list.findIndex(t=>t.id===editingTransId); if(i>=0) list[i]={...list[i],...payload}; }
-  else list.push({id:genId(),...payload});
+  if (editingTransId) {
+    const i=list.findIndex(t=>t.id===editingTransId); if(i>=0) list[i]={...list[i],...payload};
+  } else {
+    list.push({id:genId(),...payload});
+  }
+  // Re-sort after save
+  list.sort((a,b)=>((a.departDate||'')+(a.departTime||'')).localeCompare((b.departDate||'')+(b.departTime||'')));
   localStorage.setItem(LS_TRANS(tripId), JSON.stringify(list));
   try {
     if (editingTransId) await updateDoc(doc(db,'trips',tripId,'transports',editingTransId), payload);
@@ -559,10 +920,13 @@ async function saveTransport(tripId) {
 
 window.deleteTransport = async function(transId, tripId) {
   if (!confirm('이 교통 정보를 삭제할까요?')) return;
-  const list = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]').filter(t=>t.id!==transId);
-  localStorage.setItem(LS_TRANS(tripId), JSON.stringify(list));
-  try { await deleteDoc(doc(db,'trips',tripId,'transports',transId)); showToast('삭제됨'); }
-  catch { showToast('오프라인 — 로컬 삭제됨'); }
+  const list = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
+  const item = list.find(t=>t.id===transId);
+  const newList = list.filter(t=>t.id!==transId);
+  localStorage.setItem(LS_TRANS(tripId), JSON.stringify(newList));
+  redrawTimeline(tripId);
+  scheduleDelete('transport', transId, item, tripId);
+  showToast('교통 정보 삭제됨', true);
 };
 
 window.copyTransport = function(from, to, booking) {
@@ -664,6 +1028,7 @@ function openStatsModal(tripId) {
   const avgDaily    = elapsed > 0 ? Math.round(totalKRW/elapsed) : 0;
   const budget      = currentTripRef?.budget || 0;
   const maxCat      = Math.max(...Object.values(catTotals), 1);
+  const missingAccom = days.filter(d => d.date >= today && !dayData[d.date]?.accommodation).length;
 
   const catBarsHtml = EXP_KEYS.filter(k => catTotals[k]).map(k => `
     <div class="cat-bar-row">
@@ -679,6 +1044,7 @@ function openStatsModal(tripId) {
       <div class="stat-box"><div class="num">${remaining}</div><div class="lbl">남은 일수</div></div>
       <div class="stat-box"><div class="num">${cities.length}</div><div class="lbl">방문 도시</div></div>
     </div>
+    ${missingAccom ? `<div style="background:var(--danger-light);color:var(--danger);border-radius:var(--radius-sm);padding:10px 14px;font-size:.88rem;font-weight:600;margin-bottom:16px;">🏨 숙소 미정 ${missingAccom}일 남음</div>` : ''}
     ${cities.length ? `<div style="margin-bottom:16px;"><div class="day-section-label" style="margin-bottom:8px;">방문 도시</div><div style="display:flex;flex-wrap:wrap;gap:6px;">${cities.map(c=>`<span class="city-tag">${escHtml(c)}</span>`).join('')}</div></div>` : ''}
     <div style="margin-bottom:16px;">
       <div class="day-section-label" style="margin-bottom:10px;">지출 현황</div>
@@ -757,12 +1123,12 @@ async function savePacking(tripId) {
 window.openEditModal = function(date, tripId) {
   const data = JSON.parse(localStorage.getItem(LS_DAYS(tripId))||'{}')?.[date]||{};
   $('modal-day-title').textContent = `${fmtDateShort(date)} 편집`;
+  $('inp-theme').value     = data.theme||'';
   $('inp-city').value       = data.city||'';
   $('inp-accom-name').value = data.accommodation||'';
   $('inp-accom-map').value  = data.accommodationMap||'';
   $('inp-memo').value       = data.memo||'';
   $('inp-todos').value      = (data.todos||[]).map(t=>t.text).join('\n');
-  // 메모 접힘 초기화
   const memoField = $('memo-field');
   if (data.memo) { memoField.style.display=''; $('memo-toggle-icon').textContent='▲ 접기'; }
   else           { memoField.style.display='none'; $('memo-toggle-icon').textContent='▼ 펼치기'; }
@@ -805,6 +1171,7 @@ async function saveDayEdit(tripId, date) {
     return { text:text.trim(), done: prev?.done||false };
   }) : [];
   const payload = {
+    theme:$('inp-theme').value.trim(),
     city:$('inp-city').value.trim(), accommodation:$('inp-accom-name').value.trim(),
     accommodationMap:$('inp-accom-map').value.trim(), memo:$('inp-memo').value.trim(),
     todos, expenses:editingExpenses,
@@ -860,23 +1227,35 @@ window.addTodo = async function(tripId, date) {
 //  이벤트 바인딩
 // ══════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-  if (!isOnline) $('offline-banner').style.display='block';
+  if (!isOnline) { const b=$('offline-banner'); if(b) b.style.display='block'; }
   loadFxRates();
 
+  // 입장 코드
+  $('btn-entry-submit').addEventListener('click', handleEntrySubmit);
+
+  // 관리자 gear
+  $('btn-admin-gear').addEventListener('click', openAdminAuth);
+  $('btn-verify-admin').addEventListener('click', verifyAdmin);
+  $('btn-save-admin-settings').addEventListener('click', saveAdminSettings);
+
+  // 대시보드
   $('btn-new-trip').addEventListener('click', openNewTripModal);
   $('btn-cancel-new-trip').addEventListener('click', () => $('modal-new-trip').classList.remove('open'));
   $('btn-save-new-trip').addEventListener('click', saveNewTrip);
   $('inp-trip-title').addEventListener('keydown', e => { if(e.key==='Enter') saveNewTrip(); });
 
+  // 뒤로가기
   $('btn-back').addEventListener('click', () => {
     if(unsubDays)  { unsubDays();  unsubDays=null; }
     if(unsubTrans) { unsubTrans(); unsubTrans=null; }
     currentTripRef=null; navigate(null);
   });
 
+  // 지출
   $('btn-add-expense').addEventListener('click', addEditExpense);
   $('inp-exp-amount').addEventListener('keydown', e => { if(e.key==='Enter') addEditExpense(); });
 
+  // 준비물 템플릿
   $('tpl-basic').addEventListener('click', () => applyPackingTemplate('basic', currentTripId));
   $('tpl-long').addEventListener('click',  () => applyPackingTemplate('long',  currentTripId));
   $('tpl-biz').addEventListener('click',   () => applyPackingTemplate('biz',   currentTripId));

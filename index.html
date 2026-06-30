@@ -12,9 +12,23 @@
 </head>
 <body>
 
+  <!-- ══ 입장 코드 화면 ══ -->
+  <div id="screen-entry" class="screen-entry">
+    <div class="entry-card">
+      <div class="entry-brand"><b>OH</b>travel</div>
+      <p class="entry-desc">입장 코드를 입력하세요</p>
+      <input class="inp" id="inp-entry-code" type="password" placeholder="입장 코드"
+        onkeydown="if(event.key==='Enter')document.getElementById('btn-entry-submit').click()" />
+      <button class="btn accent" id="btn-entry-submit" style="width:100%;margin-top:6px;">입장</button>
+      <div id="entry-error" class="entry-error" style="display:none;">❌ 잘못된 입장 코드입니다</div>
+    </div>
+  </div>
+
   <nav class="nav">
     <div class="brand"><b>OH</b>travel</div>
-    <div class="nav-end" id="nav-end"></div>
+    <div class="nav-end" id="nav-end">
+      <button class="btn ghost sm" id="btn-admin-gear" title="관리자" style="padding:6px 10px;">⚙️</button>
+    </div>
   </nav>
 
   <!-- ══ VIEW: 대시보드 ══ -->
@@ -36,26 +50,44 @@
   </div>
 
   <!-- ══ VIEW: 타임라인 ══ -->
-  <div id="view-timeline" class="view wrap" style="display:none;">
-    <header class="section timeline-header">
-      <button class="btn ghost btn-back" id="btn-back" style="display:none;">← 전체 여행 목록</button>
-      <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">
-        <div>
-          <div id="trip-title-display" class="t-large"></div>
-          <div id="trip-date-range" class="t-cap" style="margin-top:4px;font-size:.9rem;text-transform:none;letter-spacing:normal;"></div>
-        </div>
-        <button class="btn sm icon-btn" id="btn-edit-trip" style="margin-top:6px;display:none;">✏️ 편집</button>
+  <div id="view-timeline" class="view" style="display:none;">
+    <div class="timeline-layout">
+
+      <!-- 사이드바 (PC) -->
+      <aside id="timeline-sidebar" class="timeline-sidebar"></aside>
+
+      <!-- 메인 콘텐츠 -->
+      <div class="timeline-content">
+        <header class="section timeline-header">
+          <button class="btn ghost btn-back" id="btn-back" style="display:none;">← 전체 여행 목록</button>
+          <div style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+            <div>
+              <div id="trip-title-display" class="t-large"></div>
+              <div id="trip-date-range" class="t-cap" style="margin-top:4px;font-size:.9rem;text-transform:none;letter-spacing:normal;"></div>
+            </div>
+            <button class="btn sm icon-btn" id="btn-edit-trip" style="margin-top:6px;display:none;">✏️ 편집</button>
+          </div>
+          <div id="budget-bar-wrap" class="budget-bar-wrap" style="display:none;">
+            <div class="budget-bar-labels">
+              <span id="budget-label-spent"></span>
+              <span id="budget-label-total"></span>
+            </div>
+            <div class="budget-bar-track"><div class="budget-bar-fill" id="budget-bar-fill" style="width:0%"></div></div>
+          </div>
+          <!-- 모바일/태블릿용 액션 버튼 -->
+          <div class="timeline-header-actions" id="timeline-header-actions"></div>
+        </header>
+
+        <!-- 숙소 미정 요약 -->
+        <div id="accom-missing-summary"></div>
+
+        <!-- 날짜 이동 -->
+        <div id="date-jump-wrap" class="date-jump-wrap"></div>
+
+        <!-- 타임라인 카드들 -->
+        <div id="timeline-list" class="timeline-list"></div>
       </div>
-      <div id="budget-bar-wrap" class="budget-bar-wrap" style="display:none;">
-        <div class="budget-bar-labels">
-          <span id="budget-label-spent"></span>
-          <span id="budget-label-total"></span>
-        </div>
-        <div class="budget-bar-track"><div class="budget-bar-fill" id="budget-bar-fill" style="width:0%"></div></div>
-      </div>
-      <div class="timeline-header-actions" id="timeline-header-actions"></div>
-    </header>
-    <div id="timeline-list"></div>
+    </div>
   </div>
 
   <!-- ════════════════════ MODALS ════════════════════ -->
@@ -101,8 +133,8 @@
         </select>
       </div>
       <div class="form-row-2">
-        <div class="field"><label>출발 도시</label><input class="inp" id="inp-trans-from-city" placeholder="서울" /></div>
-        <div class="field"><label>도착 도시</label><input class="inp" id="inp-trans-to-city" placeholder="방콕" /></div>
+        <div class="field"><label>출발 도시 / 공항코드</label><input class="inp" id="inp-trans-from-city" placeholder="서울 / ICN" /></div>
+        <div class="field"><label>도착 도시 / 공항코드</label><input class="inp" id="inp-trans-to-city" placeholder="방콕 / BKK" /></div>
       </div>
       <div class="form-row-2">
         <div class="field"><label>출발 날짜</label><input type="date" class="inp" id="inp-trans-depart-date" /></div>
@@ -143,6 +175,7 @@
   <div class="modal" id="modal-edit-day" onclick="if(event.target===this)closeEditModal()">
     <div class="modal-card" style="width:min(560px,96vw);max-height:88vh;overflow-y:auto;">
       <div class="t-head" style="margin-bottom:16px;" id="modal-day-title">편집</div>
+      <div class="field"><label>오늘의 테마 (선택)</label><input class="inp" id="inp-theme" placeholder="예: 방콕 시내 탐방, 이동의 날" /></div>
       <div class="field"><label>방문 도시</label><input class="inp" id="inp-city" placeholder="예: 방콕, 파리, 도쿄" /></div>
       <div class="field"><label>숙소 이름</label><input class="inp" id="inp-accom-name" placeholder="숙소 이름" /></div>
       <div class="field"><label>숙소 구글맵 링크</label><input class="inp" id="inp-accom-map" placeholder="https://maps.google.com/..." /></div>
@@ -241,7 +274,42 @@
     </div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <!-- 관리자 인증 -->
+  <div class="modal" id="modal-admin-auth" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal-card">
+      <div class="t-head" style="margin-bottom:16px;">⚙️ 관리자 인증</div>
+      <div class="field"><label>관리자 비밀번호</label>
+        <input type="password" class="inp" id="inp-admin-password" placeholder="비밀번호 입력"
+          onkeydown="if(event.key==='Enter')document.getElementById('btn-verify-admin').click()" /></div>
+      <div id="admin-auth-error" style="display:none;color:var(--danger);font-size:.85rem;margin-bottom:8px;">❌ 잘못된 비밀번호입니다</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+        <button class="btn ghost" onclick="document.getElementById('modal-admin-auth').classList.remove('open')">취소</button>
+        <button class="btn accent" id="btn-verify-admin">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 관리자 패널 -->
+  <div class="modal" id="modal-admin-panel" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+        <div class="t-head">⚙️ 관리자 설정</div>
+        <button class="btn ghost sm" onclick="document.getElementById('modal-admin-panel').classList.remove('open')">닫기</button>
+      </div>
+      <div class="field"><label>새 입장 코드</label>
+        <input class="inp" id="inp-new-entry-code" placeholder="새 입장 코드 (비우면 변경 안 함)" /></div>
+      <div class="field"><label>새 관리자 비밀번호</label>
+        <input type="password" class="inp" id="inp-new-admin-pw" placeholder="새 비밀번호 (비우면 변경 안 함)" /></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+        <button class="btn accent" id="btn-save-admin-settings">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <span id="toast-msg"></span>
+    <button class="toast-undo" id="toast-undo" style="display:none;" onclick="undoDelete()">되돌리기</button>
+  </div>
 
 </body>
 </html>
