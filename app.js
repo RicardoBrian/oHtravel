@@ -186,8 +186,13 @@ function fmtDateShort(d) {
   return new Date(d+'T00:00:00').toLocaleDateString('ko-KR',{month:'numeric',day:'numeric',weekday:'short'});
 }
 function fmtMoney(n) { return Number(n).toLocaleString('ko-KR') + '원'; }
-function isToday(d) { return d === new Date().toISOString().slice(0,10); }
-function isPast(d)  { return d < new Date().toISOString().slice(0,10); }
+function localDateStr(d) {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function todayStr() { return localDateStr(new Date()); }
+function isToday(d) { return d === todayStr(); }
+function isPast(d)  { return d < todayStr(); }
 function genId()    { return Math.random().toString(36).slice(2,10); }
 
 function getAirportFlag(code) {
@@ -206,7 +211,7 @@ function calcDDay(s, e) {
 
 function generateDays(s, e) {
   const days = []; let cur = new Date(s+'T00:00:00'); const end = new Date(e+'T00:00:00'); let i = 1;
-  while (cur <= end) { days.push({ date: cur.toISOString().slice(0,10), dayIndex: i++ }); cur.setDate(cur.getDate()+1); }
+  while (cur <= end) { days.push({ date: localDateStr(cur), dayIndex: i++ }); cur.setDate(cur.getDate()+1); }
   return days;
 }
 
@@ -630,7 +635,7 @@ function calcTotalSpentKRW(dayData) {
 // ══════════════════════════════════════
 function renderTimeline(days, dayData, transData, weather, tripId) {
   const container = $('timeline-list'); container.innerHTML = '';
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayStr();
 
   // 숙소 미정 요약
   renderMissingAccomSummary(days, dayData);
@@ -665,7 +670,7 @@ function renderTimeline(days, dayData, transData, weather, tripId) {
 function renderMissingAccomSummary(days, dayData) {
   const el = $('accom-missing-summary');
   if (isReadOnly) { el.innerHTML = ''; return; }
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayStr();
   const missing = days.filter(d => d.date >= today && !dayData[d.date]?.accommodation);
   if (!missing.length) { el.innerHTML = ''; return; }
   const preview = missing.slice(0,3).map(d => fmtDateShort(d.date)).join(', ');
@@ -844,8 +849,8 @@ async function fetchWeatherForTrip(trip, dayData, tripId) {
       const geoJson = await geoRes.json();
       if (!geoJson.results?.length) return;
       const { latitude:lat, longitude:lon } = geoJson.results[0];
-      const today   = new Date().toISOString().slice(0,10);
-      const maxDate = new Date(Date.now()+15*86400000).toISOString().slice(0,10);
+      const today   = todayStr();
+      const maxDate = localDateStr(new Date(Date.now()+15*86400000));
       if (!result[city]) result[city] = {};
 
       const fs = trip.startDate > today ? trip.startDate : today;
@@ -854,7 +859,7 @@ async function fetchWeatherForTrip(trip, dayData, tripId) {
         const fj = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${fs}&end_date=${fe}`)).json();
         fj.daily?.time?.forEach((d,i) => { result[city][d] = {code:fj.daily.weathercode[i],max:Math.round(fj.daily.temperature_2m_max[i]),min:Math.round(fj.daily.temperature_2m_min[i])}; });
       }
-      const ae = trip.endDate < today ? trip.endDate : new Date(Date.now()-86400000).toISOString().slice(0,10);
+      const ae = trip.endDate < today ? trip.endDate : localDateStr(new Date(Date.now()-86400000));
       if (trip.startDate <= ae) {
         const aj = await (await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto&start_date=${trip.startDate}&end_date=${ae}`)).json();
         aj.daily?.time?.forEach((d,i) => { result[city][d] = {code:aj.daily.weathercode[i],max:Math.round(aj.daily.temperature_2m_max[i]),min:Math.round(aj.daily.temperature_2m_min[i])}; });
@@ -1009,7 +1014,7 @@ async function saveBudget(tripId) {
 function openStatsModal(tripId) {
   const dayData = JSON.parse(localStorage.getItem(LS_DAYS(tripId))||'{}');
   const days    = generateDays(currentTripRef.startDate, currentTripRef.endDate);
-  const today   = new Date().toISOString().slice(0,10);
+  const today   = todayStr();
 
   const elapsed   = days.filter(d => d.date <= today).length;
   const remaining = days.filter(d => d.date > today).length;
