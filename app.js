@@ -670,16 +670,21 @@ function renderTimeline(days, dayData, transData, weather, tripId) {
     const w = weather[data.city]?.[date];
 
     // 체크인/체크아웃 판정
+    // 규칙: 숙소가 바뀌는 날(전환일)에 이전 숙소 체크아웃 + 새 숙소 체크인 동시 표시
     const prevAccom = idx > 0 ? (dayData[days[idx-1].date]?.accommodation || '') : '';
     const nextAccom = idx < days.length-1 ? (dayData[days[idx+1].date]?.accommodation || '') : '';
     const curAccom  = data.accommodation || '';
-    let accomStatus = null;
+    // accomInfo: { type, prevAccom }
+    // transition = 이전 숙소 있고 새 숙소로 바뀜 → 체크아웃(prevAccom) + 체크인(curAccom)
+    // checkin    = 첫 입실 (이전 숙소 없음)
+    // checkout   = 마지막 퇴실 (다음 숙소 없고, 마지막날이거나 다음날 숙소 없음)
+    // stay       = 연박 중간 (변화 없음)
+    let accomInfo = null;
     if (curAccom) {
-      const isCheckIn  = curAccom !== prevAccom;
-      const isCheckOut = curAccom !== nextAccom;
-      if (isCheckIn && isCheckOut) accomStatus = 'single';
-      else if (isCheckIn)           accomStatus = 'checkin';
-      else if (isCheckOut)          accomStatus = 'checkout';
+      if (curAccom !== prevAccom && prevAccom) accomInfo = { type: 'transition', prevAccom };
+      else if (curAccom !== prevAccom)          accomInfo = { type: 'checkin' };
+      else if (!nextAccom)                      accomInfo = { type: 'checkout' };
+      else                                      accomInfo = { type: 'stay' };
     }
 
     const wrapper = document.createElement('div');
@@ -688,7 +693,7 @@ function renderTimeline(days, dayData, transData, weather, tripId) {
     const dot = document.createElement('div');
     dot.className = `timeline-dot${isToday(date)?' today-dot':isPast(date)?' past-dot':''}`;
     wrapper.appendChild(dot);
-    wrapper.appendChild(buildDayCard(date, dayIndex, data, dayTrans, w, tripId, accomStatus));
+    wrapper.appendChild(buildDayCard(date, dayIndex, data, dayTrans, w, tripId, accomInfo));
     container.appendChild(wrapper);
   });
 
@@ -744,7 +749,7 @@ function renderDateJump(days) {
   wrap.appendChild(select);
 }
 
-function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomStatus) {
+function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo) {
   const card = document.createElement('div');
   const hasMissingAccom = !data.accommodation;
   const isTravelDay = dayTrans.some(t => t.departDate === date || t.arriveDate === date);
@@ -796,9 +801,14 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomStat
   // ── 숙소 (내용 있을 때만) ──
   const accomHtml = data.accommodation ? (() => {
     const mapBtn = data.accommodationMap ? ` <a href="${escHtml(data.accommodationMap)}" target="_blank" rel="noopener" class="accom-link">🗺 지도</a>` : '';
-    const badge = accomStatus === 'checkin'  ? `<span class="accom-status-badge checkin">체크인</span>` :
-                  accomStatus === 'checkout' ? `<span class="accom-status-badge checkout">체크아웃</span>` :
-                  accomStatus === 'single'   ? `<span class="accom-status-badge single">체크인·아웃</span>` : '';
+    const t = accomInfo?.type;
+    if (t === 'transition') {
+      // 전환일: 이전 숙소 체크아웃 + 새 숙소 체크인 두 줄
+      return `<div class="accom-row"><span class="accom-status-badge checkout">체크아웃</span>${escHtml(accomInfo.prevAccom)}</div>
+              <div class="accom-row" style="margin-top:6px"><span class="accom-status-badge checkin">체크인</span>${escHtml(data.accommodation)}${mapBtn}</div>`;
+    }
+    const badge = t === 'checkin'  ? `<span class="accom-status-badge checkin">체크인</span>` :
+                  t === 'checkout' ? `<span class="accom-status-badge checkout">체크아웃</span>` : '';
     return `<div class="accom-row">${badge}${escHtml(data.accommodation)}${mapBtn}</div>`;
   })() : '';
 
