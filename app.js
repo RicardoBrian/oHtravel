@@ -660,7 +660,7 @@ function renderTimeline(days, dayData, transData, weather, tripId) {
   // 날짜 이동 드롭다운
   renderDateJump(days);
 
-  days.forEach(({ date, dayIndex }) => {
+  days.forEach(({ date, dayIndex }, idx) => {
     const data     = dayData[date] || {};
     // Transport: filter and sort by departDate, then departTime
     const dayTrans = transData
@@ -669,13 +669,26 @@ function renderTimeline(days, dayData, transData, weather, tripId) {
 
     const w = weather[data.city]?.[date];
 
+    // 체크인/체크아웃 판정
+    const prevAccom = idx > 0 ? (dayData[days[idx-1].date]?.accommodation || '') : '';
+    const nextAccom = idx < days.length-1 ? (dayData[days[idx+1].date]?.accommodation || '') : '';
+    const curAccom  = data.accommodation || '';
+    let accomStatus = null;
+    if (curAccom) {
+      const isCheckIn  = curAccom !== prevAccom;
+      const isCheckOut = curAccom !== nextAccom;
+      if (isCheckIn && isCheckOut) accomStatus = 'single';
+      else if (isCheckIn)           accomStatus = 'checkin';
+      else if (isCheckOut)          accomStatus = 'checkout';
+    }
+
     const wrapper = document.createElement('div');
     wrapper.className = 'day-row';
 
     const dot = document.createElement('div');
     dot.className = `timeline-dot${isToday(date)?' today-dot':isPast(date)?' past-dot':''}`;
     wrapper.appendChild(dot);
-    wrapper.appendChild(buildDayCard(date, dayIndex, data, dayTrans, w, tripId));
+    wrapper.appendChild(buildDayCard(date, dayIndex, data, dayTrans, w, tripId, accomStatus));
     container.appendChild(wrapper);
   });
 
@@ -731,7 +744,7 @@ function renderDateJump(days) {
   wrap.appendChild(select);
 }
 
-function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId) {
+function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomStatus) {
   const card = document.createElement('div');
   const hasMissingAccom = !data.accommodation;
   const isTravelDay = dayTrans.some(t => t.departDate === date || t.arriveDate === date);
@@ -783,7 +796,10 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId) {
   // ── 숙소 (내용 있을 때만) ──
   const accomHtml = data.accommodation ? (() => {
     const mapBtn = data.accommodationMap ? ` <a href="${escHtml(data.accommodationMap)}" target="_blank" rel="noopener" class="accom-link">🗺 지도</a>` : '';
-    return `<div class="accom-row">${escHtml(data.accommodation)}${mapBtn}</div>`;
+    const badge = accomStatus === 'checkin'  ? `<span class="accom-status-badge checkin">체크인</span>` :
+                  accomStatus === 'checkout' ? `<span class="accom-status-badge checkout">체크아웃</span>` :
+                  accomStatus === 'single'   ? `<span class="accom-status-badge single">체크인·아웃</span>` : '';
+    return `<div class="accom-row">${badge}${escHtml(data.accommodation)}${mapBtn}</div>`;
   })() : '';
 
   // ── 지출 (내용 있을 때만) ──

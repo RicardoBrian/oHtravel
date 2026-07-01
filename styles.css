@@ -442,9 +442,13 @@ select.inp {
 .transit-day-badge { font-size: .72rem; font-weight: 700; padding: 2px 8px; background: var(--warn-light); color: var(--warn); border-radius: var(--radius-pill); }
 
 /* 숙소 */
-.accom-row { display: flex; align-items: center; gap: 10px; font-size: .92rem; flex-wrap: wrap; }
+.accom-row { display: flex; align-items: center; gap: 8px; font-size: .92rem; flex-wrap: wrap; }
 .accom-link { color: var(--accent); text-decoration: none; font-size: .82rem; font-weight: 600; }
 .accom-link:hover { text-decoration: underline; }
+.accom-status-badge { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill); flex-shrink: 0; }
+.accom-status-badge.checkin  { background: rgba(52,199,89,.15); color: #1a9e3f; }
+.accom-status-badge.checkout { background: rgba(255,149,0,.15);  color: #c07000; }
+.accom-status-badge.single   { background: rgba(0,113,227,.13);  color: #0071e3; }
 
 /* 지출 */
 .expense-list { display: flex; flex-direction: column; gap: 5px; }
