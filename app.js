@@ -206,6 +206,16 @@ function localDateStr(d) {
 function todayStr() { return localDateStr(new Date()); }
 function isToday(d) { return d === todayStr(); }
 function isPast(d)  { return d < todayStr(); }
+function calcTransDuration(departDate, departTime, arriveDate, arriveTime) {
+  if (!departDate || !arriveDate || !departTime || !arriveTime) return '';
+  const dep = new Date(`${departDate}T${departTime}:00`);
+  const arr = new Date(`${arriveDate}T${arriveTime}:00`);
+  const diff = arr - dep;
+  if (diff <= 0) return '';
+  const h = Math.floor(diff / 3600000);
+  const m = Math.round((diff % 3600000) / 60000);
+  return h > 0 ? (m > 0 ? `${h}시간 ${m}분` : `${h}시간`) : `${m}분`;
+}
 function genId()    { return Math.random().toString(36).slice(2,10); }
 
 function getAirportFlag(code) {
@@ -408,6 +418,13 @@ function renderTripList(trips) {
   trips.forEach(trip => {
     const dd = calcDDay(trip.startDate, trip.endDate);
     const budgetBadge = trip.budget ? `<span class="badge neutral">예산 ${fmtMoney(trip.budget)}</span>` : '';
+    let currentCityBadge = '';
+    if (dd.type === 'ongoing') {
+      const today = todayStr();
+      const cachedDays = JSON.parse(localStorage.getItem(LS_DAYS(trip.id))||'{}');
+      const curCity = cachedDays[today]?.city;
+      if (curCity) currentCityBadge = `<span class="badge neutral">📍 현재: ${escHtml(curCity)}</span>`;
+    }
     const card = document.createElement('div');
     card.className = 'trip-card';
     card.innerHTML = `
@@ -416,7 +433,7 @@ function renderTripList(trips) {
         <div class="trip-card-dday ${dd.type}">${dd.label}</div>
       </div>
       <div class="trip-card-date">${fmtDate(trip.startDate)} ~ ${fmtDate(trip.endDate)}</div>
-      ${budgetBadge ? `<div>${budgetBadge}</div>` : ''}
+      ${(budgetBadge||currentCityBadge) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;">${currentCityBadge}${budgetBadge}</div>` : ''}
       <div class="trip-card-actions">
         <button class="btn sm icon-btn btn-packing-card" data-id="${trip.id}">🎒 준비물</button>
         <button class="btn sm icon-btn btn-dup-card" data-id="${trip.id}">📋 복제</button>
@@ -751,7 +768,8 @@ function renderDateJump(days) {
 
 function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo) {
   const card = document.createElement('div');
-  const hasMissingAccom = !data.accommodation;
+  const hasOvernightTrans = dayTrans.some(t => t.departDate <= date && t.arriveDate > date);
+  const hasMissingAccom = !data.accommodation && !hasOvernightTrans;
   const isTravelDay = dayTrans.some(t => t.departDate === date || t.arriveDate === date);
   const isCollapsed = !expandedDays.has(date);
 
@@ -775,23 +793,23 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
   const editBtn = isReadOnly ? '' : `<button class="btn sm icon-btn day-edit-btn" onclick="openEditModal('${date}','${tripId}')">편집</button>`;
   const collapseIcon = isCollapsed ? '▼' : '▲';
 
-  const themeHtml = data.theme ? `<div class="day-theme-display">✨ ${escHtml(data.theme)}</div>` : '';
-
   // ── 교통 (내용 있을 때만) ──
   const transHtml = dayTrans.length ? dayTrans.map(t => {
     const isDepart = t.departDate===date, isArrive = t.arriveDate===date;
     const badge = (!isDepart&&!isArrive) ? '<span class="transit-day-badge">이동 중</span>' : '';
+    const duration = calcTransDuration(t.departDate, t.departTime, t.arriveDate, t.arriveTime);
     const timeStr = [
       isDepart&&t.departTime?`출발 ${t.departTime}`:'',
       isArrive&&t.arriveTime?`도착 ${t.arriveTime}`:''
-    ].filter(Boolean).join(' / ');
+    ].filter(Boolean).join(' → ');
+    const durationStr = duration ? ` <span class="trans-duration">${duration}</span>` : '';
     const fromFlag = getAirportFlag(t.fromCity), toFlag = getAirportFlag(t.toCity);
     const actBtns = isReadOnly ? '' :
       `<button class="btn sm icon-btn" onclick="openTransportModal('${t.id}','${tripId}')">편집</button>
        <button class="btn sm danger" onclick="deleteTransport('${t.id}','${tripId}')">삭제</button>`;
     return `<div class="transport-item">
       <div class="transport-route">${TRANS_ICONS[t.type]||'🚗'} <b>${fromFlag}${escHtml(t.fromCity||'?')}</b><span class="arrow">→</span><b>${toFlag}${escHtml(t.toCity||'?')}</b>${badge}</div>
-      ${timeStr?`<div class="transport-meta">🕐 ${timeStr}</div>`:''}
+      ${timeStr?`<div class="transport-meta">🕐 ${timeStr}${durationStr}</div>`:''}
       ${t.bookingNo?`<div class="transport-booking">📋 ${escHtml(t.bookingNo)}</div>`:''}
       ${t.memo?`<div class="transport-booking" style="color:var(--text-2)">💬 ${escHtml(t.memo)}</div>`:''}
       ${actBtns?`<div class="transport-actions">${actBtns}</div>`:''}
@@ -855,6 +873,7 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
 
   // ── 요약 줄 (접힌 상태) ──
   const summaryParts = [
+    weather ? `${WC_EMOJI[weather.code]||'🌡️'} ${weather.max}°` : '',
     data.accommodation || (hasMissingAccom && !isReadOnly ? '숙소 미정' : ''),
     dayTrans.length ? `${TRANS_ICONS[dayTrans[0].type]||'🚗'} ${escHtml(dayTrans[0].fromCity||'')}→${escHtml(dayTrans[0].toCity||'')}` : '',
     expenses.length ? `💰 ${fmtMoney(expTotalKRW)}` : '',
@@ -864,6 +883,7 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
     <div class="day-card-header" onclick="toggleDayCollapse('${date}',event)">
       <div class="day-label-group">
         <span class="day-label">Day ${dayIndex}</span>
+        ${data.theme ? `<span class="day-theme-inline">${escHtml(data.theme)}</span>` : ''}
         <span class="day-label-date">${fmtDateShort(date)}</span>
         ${cityTag}${weatherBadge}${missingBadge}
       </div>
@@ -872,7 +892,6 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
         <button class="btn sm icon-btn collapse-btn" onclick="toggleDayCollapse('${date}',event)">${collapseIcon}</button>
       </div>
     </div>
-    ${themeHtml}
     <div class="day-card-summary">${summaryParts.join(' · ') || '내용 없음'}</div>
     <div class="day-sections">${sections}</div>`;
   return card;
@@ -1072,6 +1091,7 @@ function openStatsModal(tripId) {
   const elapsed   = days.filter(d => d.date <= today).length;
   const remaining = days.filter(d => d.date > today).length;
   const cities    = [...new Set(Object.values(dayData).map(d=>d.city).filter(Boolean))];
+  const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
   const catTotals = {};
   let   totalKRW  = 0;
 
@@ -1098,6 +1118,7 @@ function openStatsModal(tripId) {
       <div class="stat-box"><div class="num">${elapsed}</div><div class="lbl">경과 일수</div></div>
       <div class="stat-box"><div class="num">${remaining}</div><div class="lbl">남은 일수</div></div>
       <div class="stat-box"><div class="num">${cities.length}</div><div class="lbl">방문 도시</div></div>
+      <div class="stat-box"><div class="num">${transData.length}</div><div class="lbl">교통편</div></div>
     </div>
     ${missingAccom ? `<div style="background:var(--danger-light);color:var(--danger);border-radius:var(--radius-sm);padding:10px 14px;font-size:.88rem;font-weight:600;margin-bottom:16px;">🏨 숙소 미정 ${missingAccom}일 남음</div>` : ''}
     ${cities.length ? `<div style="margin-bottom:16px;"><div class="day-section-label" style="margin-bottom:8px;">방문 도시</div><div style="display:flex;flex-wrap:wrap;gap:6px;">${cities.map(c=>`<span class="city-tag">${escHtml(c)}</span>`).join('')}</div></div>` : ''}
@@ -1309,6 +1330,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // 지출
   $('btn-add-expense').addEventListener('click', addEditExpense);
   $('inp-exp-amount').addEventListener('keydown', e => { if(e.key==='Enter') addEditExpense(); });
+  const updateExpPreview = () => {
+    const amount = Number($('inp-exp-amount').value);
+    const currency = $('inp-exp-currency').value;
+    const preview = $('exp-krw-preview');
+    if (!preview) return;
+    if (!amount || !currency || currency === 'KRW' || !fxRates) { preview.textContent = ''; return; }
+    preview.textContent = `≈ ${fmtMoney(toKRW(amount, currency))}`;
+  };
+  $('inp-exp-amount').addEventListener('input', updateExpPreview);
+  $('inp-exp-currency').addEventListener('change', updateExpPreview);
 
   // 준비물 템플릿
   $('tpl-basic').addEventListener('click', () => applyPackingTemplate(currentTripId));

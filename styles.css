@@ -388,6 +388,7 @@ select.inp {
 .day-label-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; }
 .day-label      { font-size: 1rem; font-weight: 700; transition: color var(--dur); }
 .day-label-date { color: var(--text-2); font-weight: 400; font-size: .88rem; }
+.day-theme-inline { font-size: .88rem; color: var(--text-2); font-style: italic; font-weight: 500; }
 .day-theme-display {
   width: 100%; font-size: .88rem; font-weight: 600; color: var(--text-2);
   margin-top: 2px; margin-bottom: 10px; font-style: italic;
@@ -434,6 +435,7 @@ select.inp {
 .transport-route .arrow { color: var(--text-3); }
 .transport-meta   { font-size: .82rem; color: var(--text-2); margin-top: 4px; }
 .transport-booking{ font-size: .8rem;  color: var(--text-3); margin-top: 2px; }
+.trans-duration { font-size: .78rem; color: var(--accent); font-weight: 700; margin-left: 6px; }
 .transport-actions {
   display: flex; gap: 6px; margin-top: 8px;
   opacity: 0; transition: opacity var(--dur) var(--ease);

@@ -195,7 +195,10 @@
             <option value="etc">📦 기타</option>
           </select>
           <input class="inp" id="inp-exp-name" placeholder="항목명" style="flex:1;" />
-          <input type="number" class="inp" id="inp-exp-amount" placeholder="금액" style="width:80px;flex-shrink:0;" min="0" />
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <input type="number" class="inp" id="inp-exp-amount" placeholder="금액" style="width:80px;" min="0" />
+            <span id="exp-krw-preview" style="font-size:.72rem;color:var(--text-3);min-height:14px;"></span>
+          </div>
           <select class="inp" id="inp-exp-currency" style="flex:0 0 72px;">
             <option value="KRW">₩ KRW</option>
             <option value="USD">$ USD</option>
