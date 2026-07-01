@@ -28,11 +28,24 @@ const EXP_LABELS   = { food:'🍜 식비', transport:'🚌 교통', lodging:'�
 const EXP_KEYS     = ['food','transport','lodging','sightseeing','shopping','etc'];
 const CURRENCIES   = { KRW:{s:'₩',n:'원'}, USD:{s:'$',n:'달러'}, JPY:{s:'¥',n:'엔'}, EUR:{s:'€',n:'유로'}, THB:{s:'฿',n:'바트'}, VND:{s:'₫',n:'동'}, SGD:{s:'S$',n:'싱가포르달러'}, GBP:{s:'£',n:'파운드'} };
 
-const PACKING_TEMPLATES = {
-  basic: ['여권','지갑 / 카드','핸드폰 충전기','이어폰','상비약','세면도구','선크림'],
-  long:  ['여권','지갑 / 카드','핸드폰 충전기','이어폰','상비약','세면도구','선크림','노트북','어댑터','여분 의류','세탁 세제','비상금 (USD/EUR)','보조배터리'],
-  biz:   ['여권','지갑 / 카드','명함','정장 / 비즈니스 캐주얼','노트북','충전기 세트','어댑터','보조배터리','상비약'],
-};
+const PACKING_TEMPLATE = ['여권','지갑 / 카드','핸드폰 충전기','이어폰','상비약','세면도구','선크림','보조배터리','어댑터'];
+
+// 도시별 자동 색상 팔레트
+const CITY_PALETTE = [
+  { bg:'rgba(0,113,227,.13)',   text:'#0071e3' },
+  { bg:'rgba(52,199,89,.15)',   text:'#1a9e3f' },
+  { bg:'rgba(255,159,10,.15)',  text:'#b87000' },
+  { bg:'rgba(175,82,222,.13)',  text:'#8533c4' },
+  { bg:'rgba(255,59,48,.12)',   text:'#d0241a' },
+  { bg:'rgba(90,200,250,.18)',  text:'#0772b6' },
+  { bg:'rgba(255,45,85,.12)',   text:'#c4004a' },
+  { bg:'rgba(48,209,88,.14)',   text:'#1e8c40' },
+];
+function cityColor(city) {
+  if (!city) return null;
+  let h = 0; for (let i = 0; i < city.length; i++) h = (h * 31 + city.charCodeAt(i)) & 0xffff;
+  return CITY_PALETTE[h % CITY_PALETTE.length];
+}
 
 const WC_EMOJI = {0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',77:'❄️',80:'🌦️',81:'🌧️',82:'⛈️',85:'🌨️',86:'❄️',95:'⛈️',96:'⛈️',99:'⛈️'};
 
@@ -98,7 +111,7 @@ let editingTransId = null;
 let editingExpenses= [];
 let currentTripRef = null;
 let fxRates        = null;
-let collapsedDays  = new Set();
+let expandedDays   = new Set(); // 기본 접힘 — 명시적으로 펼친 날짜만 추적
 let pendingDelete  = null;
 
 // ══════════════════════════════════════
@@ -353,10 +366,11 @@ function navigate(tripId, shareMode=false) {
 }
 window.addEventListener('popstate', boot);
 function boot() {
-  if (!isAuthed) { showEntryScreen(); return; }
-  hideEntryScreen();
   const { tripId, view } = parseURL();
   isReadOnly = view === 'share';
+  // 공유 모드는 인증 없이 바로 진입
+  if (!isAuthed && !isReadOnly) { showEntryScreen(); return; }
+  hideEntryScreen();
   if (tripId) { currentTripId = tripId; showTimelineView(tripId); }
   else        { currentTripId = null; isReadOnly = false; showDashboardView(); }
 }
@@ -637,6 +651,9 @@ function renderTimeline(days, dayData, transData, weather, tripId) {
   const container = $('timeline-list'); container.innerHTML = '';
   const today = todayStr();
 
+  // 여행 진행률
+  renderTripProgress(days, today);
+
   // 숙소 미정 요약
   renderMissingAccomSummary(days, dayData);
 
@@ -665,6 +682,21 @@ function renderTimeline(days, dayData, transData, weather, tripId) {
   // 오늘 카드로 스크롤
   const todayCard = container.querySelector(`#day-${today}`);
   if (todayCard) setTimeout(() => todayCard.scrollIntoView({behavior:'smooth',block:'start'}), 300);
+}
+
+function renderTripProgress(days, today) {
+  const wrap = $('trip-progress-wrap');
+  if (!wrap) return;
+  const total   = days.length;
+  const elapsed = days.filter(d => d.date <= today).length;
+  const isActive = elapsed > 0 && elapsed < total;
+  if (!isActive) { wrap.innerHTML = ''; return; }
+  const pct = Math.round(elapsed / total * 100);
+  wrap.innerHTML = `
+    <div class="trip-progress">
+      <div class="trip-progress-bar" style="width:${pct}%"></div>
+    </div>
+    <div class="trip-progress-label">${elapsed} / ${total}일 경과 · ${pct}%</div>`;
 }
 
 function renderMissingAccomSummary(days, dayData) {
@@ -703,7 +735,7 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId) {
   const card = document.createElement('div');
   const hasMissingAccom = !data.accommodation;
   const isTravelDay = dayTrans.some(t => t.departDate === date || t.arriveDate === date);
-  const isCollapsed = collapsedDays.has(date);
+  const isCollapsed = !expandedDays.has(date);
 
   let cls = 'day-card';
   if (isToday(date)) cls += ' today';
@@ -713,73 +745,64 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId) {
   card.className = cls;
   card.id = `day-${date}`;
 
-  // 헤더
-  const cityTag      = data.city ? `<span class="city-tag">📍 ${escHtml(data.city)}</span>` : '';
+  // 도시 컬러
+  const col = cityColor(data.city);
+  const cityStyle = col ? `style="background:${col.bg};color:${col.text};"` : '';
+  const cityTag = data.city ? `<span class="city-tag" ${cityStyle}>📍 ${escHtml(data.city)}</span>` : '';
+
   const weatherBadge = weather
-    ? `<span class="weather-badge">${WC_EMOJI[weather.code]||'🌡️'} ${weather.max}° / ${weather.min}°</span>`
-    : (data.city ? '' : '');
+    ? `<span class="weather-badge">${WC_EMOJI[weather.code]||'🌡️'} ${weather.max}°/${weather.min}°</span>` : '';
   const missingBadge = hasMissingAccom && !isReadOnly
     ? `<span class="missing-accom-badge">숙소 미입력</span>` : '';
   const editBtn = isReadOnly ? '' : `<button class="btn sm icon-btn day-edit-btn" onclick="openEditModal('${date}','${tripId}')">편집</button>`;
-  const collapseBtn = `<button class="btn sm icon-btn collapse-btn" onclick="toggleDayCollapse('${date}',event)">${isCollapsed?'▼':'▲'}</button>`;
+  const collapseIcon = isCollapsed ? '▼' : '▲';
 
-  const themeHtml = data.theme
-    ? `<div class="day-theme-display">✨ ${escHtml(data.theme)}</div>` : '';
+  const themeHtml = data.theme ? `<div class="day-theme-display">✨ ${escHtml(data.theme)}</div>` : '';
 
-  // 교통
-  const transHtml = dayTrans.length
-    ? dayTrans.map(t => {
-        const isDepart = t.departDate===date, isArrive = t.arriveDate===date;
-        const badge = (!isDepart&&!isArrive) ? '<span class="transit-day-badge">이동 중</span>' : '';
-        const timeStr = [
-          isDepart&&t.departTime?`출발 ${t.departTime}`:'',
-          isArrive&&t.arriveTime?`도착 ${t.arriveTime}`:''
-        ].filter(Boolean).join(' / ');
-        const fromFlag = getAirportFlag(t.fromCity);
-        const toFlag   = getAirportFlag(t.toCity);
-        const editBtn2 = isReadOnly?'':
-          `<button class="btn sm icon-btn" onclick="openTransportModal('${t.id}','${tripId}')">편집</button>` +
-          `<button class="btn sm danger" onclick="deleteTransport('${t.id}','${tripId}')">삭제</button>`;
-        return `
-          <div class="transport-item">
-            <div class="transport-route">${TRANS_ICONS[t.type]||'🚗'} <b>${fromFlag}${escHtml(t.fromCity||'?')}</b><span class="arrow">→</span><b>${toFlag}${escHtml(t.toCity||'?')}</b>${badge}</div>
-            ${timeStr?`<div class="transport-meta">🕐 ${timeStr}</div>`:''}
-            ${t.bookingNo?`<div class="transport-booking">📋 ${escHtml(t.bookingNo)}</div>`:''}
-            ${t.memo?`<div class="transport-booking" style="color:var(--text-2)">💬 ${escHtml(t.memo)}</div>`:''}
-            <div class="transport-actions">
-              <button class="btn sm icon-btn" onclick="copyTransport('${escHtml(t.fromCity||'')}','${escHtml(t.toCity||'')}','${escHtml(t.bookingNo||'')}')">복사</button>
-              ${editBtn2}
-            </div>
-          </div>`;
-      }).join('')
-    : `<div class="t-cap" style="color:var(--text-3);font-style:italic;">등록된 교통 없음</div>`;
+  // ── 교통 (내용 있을 때만) ──
+  const transHtml = dayTrans.length ? dayTrans.map(t => {
+    const isDepart = t.departDate===date, isArrive = t.arriveDate===date;
+    const badge = (!isDepart&&!isArrive) ? '<span class="transit-day-badge">이동 중</span>' : '';
+    const timeStr = [
+      isDepart&&t.departTime?`출발 ${t.departTime}`:'',
+      isArrive&&t.arriveTime?`도착 ${t.arriveTime}`:''
+    ].filter(Boolean).join(' / ');
+    const fromFlag = getAirportFlag(t.fromCity), toFlag = getAirportFlag(t.toCity);
+    const actBtns = isReadOnly ? '' :
+      `<button class="btn sm icon-btn" onclick="openTransportModal('${t.id}','${tripId}')">편집</button>
+       <button class="btn sm danger" onclick="deleteTransport('${t.id}','${tripId}')">삭제</button>`;
+    return `<div class="transport-item">
+      <div class="transport-route">${TRANS_ICONS[t.type]||'🚗'} <b>${fromFlag}${escHtml(t.fromCity||'?')}</b><span class="arrow">→</span><b>${toFlag}${escHtml(t.toCity||'?')}</b>${badge}</div>
+      ${timeStr?`<div class="transport-meta">🕐 ${timeStr}</div>`:''}
+      ${t.bookingNo?`<div class="transport-booking">📋 ${escHtml(t.bookingNo)}</div>`:''}
+      ${t.memo?`<div class="transport-booking" style="color:var(--text-2)">💬 ${escHtml(t.memo)}</div>`:''}
+      ${actBtns?`<div class="transport-actions">${actBtns}</div>`:''}
+    </div>`;
+  }).join('') : '';
 
-  // 숙소
-  let accomHtml = `<div class="t-cap" style="color:var(--text-3);font-style:italic;">미정</div>`;
-  if (data.accommodation) {
+  // ── 숙소 (내용 있을 때만) ──
+  const accomHtml = data.accommodation ? (() => {
     const mapBtn = data.accommodationMap ? ` <a href="${escHtml(data.accommodationMap)}" target="_blank" rel="noopener" class="accom-link">🗺 지도</a>` : '';
-    accomHtml = `<div class="accom-row">${escHtml(data.accommodation)}${mapBtn}</div>`;
-  }
+    return `<div class="accom-row">${escHtml(data.accommodation)}${mapBtn}</div>`;
+  })() : '';
 
-  // 지출
+  // ── 지출 (내용 있을 때만) ──
   const expenses = data.expenses || [];
   const expTotalKRW = expenses.reduce((s,e) => s+toKRW(e.amount,e.currency), 0);
-  const expHtml = expenses.length
-    ? `<div class="expense-list">${expenses.map(e=>`
-        <div class="expense-row">
-          <span class="expense-cat">${EXP_LABELS[e.category]||e.category}</span>
-          <span class="expense-name">${escHtml(e.name)}</span>
-          <span class="expense-amount">${fmtExpenseAmount(e.amount,e.currency)}</span>
-        </div>`).join('')}</div><div class="expense-total">합계 ${fmtMoney(expTotalKRW)}</div>`
-    : `<div class="t-cap" style="color:var(--text-3);font-style:italic;">지출 없음</div>`;
+  const expHtml = expenses.length ? `
+    <div class="expense-list">${expenses.map(e=>`
+      <div class="expense-row">
+        <span class="expense-cat">${EXP_LABELS[e.category]||e.category}</span>
+        <span class="expense-name">${escHtml(e.name)}</span>
+        <span class="expense-amount">${fmtExpenseAmount(e.amount,e.currency)}</span>
+      </div>`).join('')}</div>
+    <div class="expense-total">합계 ${fmtMoney(expTotalKRW)}</div>` : '';
 
-  // 메모 (자동 링크)
-  const memoHtml = data.memo
-    ? `<div class="memo-box">${autoLink(data.memo)}</div>`
-    : `<div class="t-cap" style="color:var(--text-3);font-style:italic;">메모 없음</div>`;
+  // ── 메모 (내용 있을 때만) ──
+  const memoHtml = data.memo ? `<div class="memo-box">${autoLink(data.memo)}</div>` : '';
 
-  // To-Do
-  const todos     = data.todos || [];
+  // ── To-Do ──
+  const todos = data.todos || [];
   const todoClass = isReadOnly ? 'class="todo-list readonly-todos"' : 'class="todo-list"';
   const todoItems = todos.map((todo,i) => `
     <li class="todo-item${todo.done?' done':''}" id="td-${date}-${i}">
@@ -793,13 +816,22 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId) {
         onkeydown="if(event.key==='Enter')addTodo('${tripId}','${date}')" />
       <button class="btn sm icon-btn" onclick="addTodo('${tripId}','${date}')">+</button>
     </div>`;
+  const todoHtml = (todos.length || !isReadOnly) ? `<ul ${todoClass}>${todoItems}</ul>${addTodoRow}` : '';
 
-  // 요약 줄 (접힌 상태)
+  // ── 섹션 조합 (내용 있을 때만 렌더) ──
+  const sections = [
+    transHtml  ? `<div class="day-section">${transHtml}</div>` : '',
+    accomHtml  ? `<div class="day-section"><div class="day-section-label">🏨 숙소</div>${accomHtml}</div>` : '',
+    expHtml    ? `<div class="day-section"><div class="day-section-label">💰 지출</div>${expHtml}</div>` : '',
+    memoHtml   ? `<div class="day-section"><div class="day-section-label">📝 메모</div>${memoHtml}</div>` : '',
+    todoHtml   ? `<div class="day-section"><div class="day-section-label">✅ To-Do</div>${todoHtml}</div>` : '',
+  ].filter(Boolean).join('');
+
+  // ── 요약 줄 (접힌 상태) ──
   const summaryParts = [
-    data.city || '도시 미정',
-    data.accommodation ? data.accommodation : '숙소 미정',
-    dayTrans.length ? `교통 ${dayTrans.length}건` : '',
-    expenses.length ? `지출 ${fmtMoney(expTotalKRW)}` : '',
+    data.accommodation || (hasMissingAccom && !isReadOnly ? '숙소 미정' : ''),
+    dayTrans.length ? `${TRANS_ICONS[dayTrans[0].type]||'🚗'} ${escHtml(dayTrans[0].fromCity||'')}→${escHtml(dayTrans[0].toCity||'')}` : '',
+    expenses.length ? `💰 ${fmtMoney(expTotalKRW)}` : '',
   ].filter(Boolean);
 
   card.innerHTML = `
@@ -811,18 +843,12 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId) {
       </div>
       <div class="day-header-actions" onclick="event.stopPropagation()">
         ${editBtn}
-        ${collapseBtn}
+        <button class="btn sm icon-btn collapse-btn" onclick="toggleDayCollapse('${date}',event)">${collapseIcon}</button>
       </div>
     </div>
     ${themeHtml}
-    <div class="day-card-summary">${summaryParts.join(' · ')}</div>
-    <div class="day-sections">
-      <div class="day-section"><div class="day-section-label">✈️ 교통</div>${transHtml}</div>
-      <div class="day-section"><div class="day-section-label">🏨 숙소</div>${accomHtml}</div>
-      <div class="day-section"><div class="day-section-label">💰 지출</div>${expHtml}</div>
-      <div class="day-section"><div class="day-section-label">📝 메모</div>${memoHtml}</div>
-      <div class="day-section"><div class="day-section-label">✅ To-Do</div><ul ${todoClass}>${todoItems}</ul>${addTodoRow}</div>
-    </div>`;
+    <div class="day-card-summary">${summaryParts.join(' · ') || '내용 없음'}</div>
+    <div class="day-sections">${sections}</div>`;
   return card;
 }
 
@@ -830,11 +856,12 @@ window.toggleDayCollapse = function(date, e) {
   if (e) e.stopPropagation();
   const card = document.getElementById(`day-${date}`);
   if (!card) return;
-  if (collapsedDays.has(date)) collapsedDays.delete(date);
-  else collapsedDays.add(date);
-  card.classList.toggle('collapsed', collapsedDays.has(date));
+  if (expandedDays.has(date)) expandedDays.delete(date);
+  else expandedDays.add(date);
+  const collapsed = !expandedDays.has(date);
+  card.classList.toggle('collapsed', collapsed);
   const btn = card.querySelector('.collapse-btn');
-  if (btn) btn.textContent = collapsedDays.has(date) ? '▼' : '▲';
+  if (btn) btn.textContent = collapsed ? '▼' : '▲';
 };
 
 // ══════════════════════════════════════
@@ -1032,15 +1059,12 @@ function openStatsModal(tripId) {
 
   const avgDaily    = elapsed > 0 ? Math.round(totalKRW/elapsed) : 0;
   const budget      = currentTripRef?.budget || 0;
-  const maxCat      = Math.max(...Object.values(catTotals), 1);
   const missingAccom = days.filter(d => d.date >= today && !dayData[d.date]?.accommodation).length;
 
-  const catBarsHtml = EXP_KEYS.filter(k => catTotals[k]).map(k => `
-    <div class="cat-bar-row">
-      <span class="cat-bar-label">${EXP_LABELS[k]}</span>
-      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${Math.round(catTotals[k]/maxCat*100)}%"></div></div>
-      <span class="cat-bar-amt">${fmtMoney(catTotals[k])}</span>
-    </div>`).join('') || '<div class="t-cap">지출 내역 없음</div>';
+  // 카테고리별 상위 3개만 간단히
+  const topCats = EXP_KEYS.filter(k => catTotals[k])
+    .sort((a,b) => catTotals[b]-catTotals[a]).slice(0,3)
+    .map(k => `<span class="badge neutral" style="font-size:.78rem;">${EXP_LABELS[k]} ${fmtMoney(catTotals[k])}</span>`).join('');
 
   $('stats-content').innerHTML = `
     <div class="stat-grid">
@@ -1065,7 +1089,7 @@ function openStatsModal(tripId) {
         <div class="budget-bar-track"><div class="budget-bar-fill ${totalKRW>budget?'over':''}" style="width:${Math.min(Math.round(totalKRW/budget*100),100)}%"></div></div>
         <div style="font-size:.78rem;color:var(--text-2);margin-top:6px;">잔여 ${fmtMoney(Math.max(budget-totalKRW,0))}</div>
       </div>` : ''}
-      ${catBarsHtml}
+      ${topCats ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">${topCats}</div>` : ''}
     </div>`;
   $('modal-stats').classList.add('open');
 }
@@ -1109,10 +1133,10 @@ window.deletePacking = function(tripId, idx) {
   currentTripRef.packing.splice(idx,1);
   savePacking(tripId); renderPackingList(tripId);
 };
-function applyPackingTemplate(key, tripId) {
+function applyPackingTemplate(tripId) {
   if (!currentTripRef.packing) currentTripRef.packing=[];
   const existing = new Set(currentTripRef.packing.map(i=>i.text));
-  (PACKING_TEMPLATES[key]||[]).filter(t=>!existing.has(t)).forEach(t=>currentTripRef.packing.push({text:t,done:false}));
+  PACKING_TEMPLATE.filter(t=>!existing.has(t)).forEach(t=>currentTripRef.packing.push({text:t,done:false}));
   savePacking(tripId); renderPackingList(tripId); showToast('템플릿 적용됨');
 }
 async function savePacking(tripId) {
@@ -1261,9 +1285,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('inp-exp-amount').addEventListener('keydown', e => { if(e.key==='Enter') addEditExpense(); });
 
   // 준비물 템플릿
-  $('tpl-basic').addEventListener('click', () => applyPackingTemplate('basic', currentTripId));
-  $('tpl-long').addEventListener('click',  () => applyPackingTemplate('long',  currentTripId));
-  $('tpl-biz').addEventListener('click',   () => applyPackingTemplate('biz',   currentTripId));
+  $('tpl-basic').addEventListener('click', () => applyPackingTemplate(currentTripId));
   $('btn-clear-packing').addEventListener('click', () => {
     if (!currentTripRef?.packing) return;
     currentTripRef.packing=currentTripRef.packing.filter(i=>!i.done);

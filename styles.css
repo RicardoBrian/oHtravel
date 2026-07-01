@@ -302,6 +302,18 @@ select.inp {
 }
 .missing-accom-banner:hover { background: rgba(255,59,48,.18); }
 
+/* ── 여행 진행률 ── */
+#trip-progress-wrap { margin-bottom: 12px; }
+.trip-progress {
+  height: 4px; background: var(--surface-2); border-radius: var(--radius-pill);
+  overflow: hidden; margin-bottom: 5px;
+}
+.trip-progress-bar {
+  height: 100%; background: var(--accent-grad);
+  border-radius: var(--radius-pill); transition: width .6s var(--ease);
+}
+.trip-progress-label { font-size: .75rem; color: var(--text-3); font-weight: 600; }
+
 /* ── 날짜 이동 ── */
 .date-jump-wrap { margin-bottom: 16px; }
 .date-jump-select { max-width: 280px; font-size: .88rem; padding: 8px 12px; }
@@ -422,7 +434,11 @@ select.inp {
 .transport-route .arrow { color: var(--text-3); }
 .transport-meta   { font-size: .82rem; color: var(--text-2); margin-top: 4px; }
 .transport-booking{ font-size: .8rem;  color: var(--text-3); margin-top: 2px; }
-.transport-actions { display: flex; gap: 6px; margin-top: 8px; }
+.transport-actions {
+  display: flex; gap: 6px; margin-top: 8px;
+  opacity: 0; transition: opacity var(--dur) var(--ease);
+}
+.transport-item:hover .transport-actions { opacity: 1; }
 .transit-day-badge { font-size: .72rem; font-weight: 700; padding: 2px 8px; background: var(--warn-light); color: var(--warn); border-radius: var(--radius-pill); }
 
 /* 숙소 */

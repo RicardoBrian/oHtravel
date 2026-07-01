@@ -78,6 +78,9 @@
           <div class="timeline-header-actions" id="timeline-header-actions"></div>
         </header>
 
+        <!-- 여행 진행률 -->
+        <div id="trip-progress-wrap"></div>
+
         <!-- 숙소 미정 요약 -->
         <div id="accom-missing-summary"></div>
 
@@ -256,10 +259,7 @@
         <button class="btn ghost sm" onclick="document.getElementById('modal-packing').classList.remove('open')">닫기</button>
       </div>
       <div class="packing-templates">
-        <span class="t-cap" style="margin-right:6px;">템플릿:</span>
-        <button class="btn sm ghost" id="tpl-basic">기본 여행</button>
-        <button class="btn sm ghost" id="tpl-long">장기 여행</button>
-        <button class="btn sm ghost" id="tpl-biz">비즈니스</button>
+        <button class="btn sm ghost" id="tpl-basic">기본 템플릿 적용</button>
       </div>
       <div class="todo-add-row" style="margin:12px 0;">
         <input class="todo-add-inp" id="inp-packing-item" placeholder="준비물 추가..."
