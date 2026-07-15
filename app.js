@@ -570,14 +570,18 @@ function renderTimeline(days, dayData, transData, weather, tripId) {
     // checkin    = 첫 입실 (이전 숙소 없음)
     // checkout   = 마지막 퇴실 (다음 숙소 없고, 마지막날이거나 다음날 숙소 없음)
     // stay       = 연박 중간 (변화 없음)
+    const isLastDayOfTrip = idx === days.length - 1;
+
     let accomInfo = null;
     if (curAccom) {
       const isFreshCheckin = curAccom !== prevAccom;
-      // 체크인 당일부터 같은 숙소가 연속되는 일수
+      // 체크인 당일부터 같은 숙소가 연속되는 일수 — 여행 마지막 날은 체크아웃일이므로 밤으로 세지 않음
       let nights = 0;
       if (isFreshCheckin) {
         for (let j = idx; j < days.length; j++) {
-          if ((dayData[days[j].date]?.accommodation || '') === curAccom) nights++; else break;
+          if ((dayData[days[j].date]?.accommodation || '') !== curAccom) break;
+          if (j === days.length - 1) break;
+          nights++;
         }
       }
       if (isFreshCheckin && prevAccom) accomInfo = { type: 'transition', prevAccom, prevAccomMap: dayData[days[idx-1].date]?.accommodationMap || '', nights };
@@ -592,7 +596,7 @@ function renderTimeline(days, dayData, transData, weather, tripId) {
     const dot = document.createElement('div');
     dot.className = `timeline-dot${isToday(date)?' today-dot':isPast(date)?' past-dot':''}`;
     wrapper.appendChild(dot);
-    wrapper.appendChild(buildDayCard(date, dayIndex, data, dayTrans, w, tripId, accomInfo));
+    wrapper.appendChild(buildDayCard(date, dayIndex, data, dayTrans, w, tripId, accomInfo, isLastDayOfTrip));
     container.appendChild(wrapper);
   });
 
@@ -610,7 +614,9 @@ function renderTripStatus(days, today, dayData) {
   const isActive = elapsed > 0 && elapsed < total;
   const pct      = isActive ? Math.round(elapsed / total * 100) : 0;
 
-  const missing = isReadOnly ? [] : days.filter(d => d.date >= today && !dayData[d.date]?.accommodation);
+  // 여행 마지막 날은 체크아웃하고 떠나는 날이라 숙소가 없는 게 정상 — 미정 집계에서 제외
+  const lastDate = days[days.length-1]?.date;
+  const missing  = isReadOnly ? [] : days.filter(d => d.date >= today && d.date !== lastDate && !dayData[d.date]?.accommodation);
   const showJump = days.length >= 5;
 
   if (!isActive && !missing.length && !showJump) { wrap.innerHTML = ''; return; }
@@ -643,10 +649,11 @@ function renderTripStatus(days, today, dayData) {
   }
 }
 
-function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo) {
+function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo, isLastDayOfTrip) {
   const card = document.createElement('div');
   const hasOvernightTrans = dayTrans.some(t => t.departDate <= date && t.arriveDate > date);
-  const hasMissingAccom = !data.accommodation && !hasOvernightTrans;
+  // 여행 마지막 날은 체크아웃하고 떠나는 날이라 숙소가 없는 게 정상
+  const hasMissingAccom = !data.accommodation && !hasOvernightTrans && !isLastDayOfTrip;
   const isTravelDay = dayTrans.some(t => t.departDate === date || t.arriveDate === date);
   const isCollapsed = !expandedDays.has(date);
 
