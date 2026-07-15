@@ -150,10 +150,10 @@ function parseTodoInput(raw) {
   return m ? { time: `${m[1].padStart(2,'0')}:${m[2]}`, text: m[3].trim() } : { time: null, text: raw.trim() };
 }
 
-// 내용 있을 때만 "메모" 칩 렌더 — 탭하면 펼쳐짐
+// 내용 있을 때만 "메모" 칩 렌더 — 탭하면 펼쳐짐, 칩 자체도 열림 상태 표시
 function memoChip(text) {
   if (!text) return '';
-  return `<button type="button" class="memo-chip" onclick="this.nextElementSibling.classList.toggle('open')">${ic('ic-message',12)} 메모</button><div class="memo-note">${autoLink(text)}</div>`;
+  return `<button type="button" class="memo-chip" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">${ic('ic-chevron',11)} 메모</button><div class="memo-note">${autoLink(text)}</div>`;
 }
 
 function fmtDate(d) {
