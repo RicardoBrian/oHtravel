@@ -459,7 +459,10 @@ select.inp {
 
 /* 일정 (교통 + 시간 등록된 할일 통합 타임라인) */
 .schedule-list { display: flex; flex-direction: column; gap: 8px; }
-.schedule-list .todo-item { font-size: .9rem; }
+.schedule-list .todo-item {
+  background: var(--surface-2); border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm); padding: 12px 14px; font-size: .9rem;
+}
 
 /* 교통 */
 .transport-item {
