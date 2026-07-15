@@ -121,14 +121,8 @@
           <div class="timeline-header-actions" id="timeline-header-actions"></div>
         </header>
 
-        <!-- 여행 진행률 -->
-        <div id="trip-progress-wrap"></div>
-
-        <!-- 숙소 미정 요약 -->
-        <div id="accom-missing-summary"></div>
-
-        <!-- 날짜 이동 -->
-        <div id="date-jump-wrap" class="date-jump-wrap"></div>
+        <!-- 여행 상태: 진행률 + 숙소 미정 + 날짜 이동 -->
+        <div id="trip-status-wrap"></div>
 
         <!-- 타임라인 카드들 -->
         <div id="timeline-list" class="timeline-list"></div>
@@ -199,20 +193,15 @@
     </div>
   </div>
 
-  <!-- 숙소 일괄 등록 -->
-  <div class="modal" id="modal-bulk-accom" onclick="if(event.target===this)this.classList.remove('open')">
-    <div class="modal-card">
-      <div class="t-head" style="margin-bottom:16px;">숙소 일괄 등록</div>
-      <p class="t-cap" style="margin-bottom:14px;text-transform:none;letter-spacing:normal;">날짜 범위의 모든 날에 같은 숙소를 적용합니다.</p>
-      <div class="field"><label>숙소 이름</label><input class="inp" id="inp-bulk-accom-name" placeholder="방콕 힐튼 호텔" /></div>
-      <div class="field"><label>구글맵 링크 (선택)</label><input class="inp" id="inp-bulk-accom-map" placeholder="https://maps.google.com/..." /></div>
-      <div class="form-row-2">
-        <div class="field"><label>시작 날짜</label><input type="date" class="inp" id="inp-bulk-start" /></div>
-        <div class="field"><label>종료 날짜</label><input type="date" class="inp" id="inp-bulk-end" /></div>
-      </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
-        <button class="btn ghost" onclick="document.getElementById('modal-bulk-accom').classList.remove('open')">취소</button>
-        <button class="btn accent" id="btn-save-bulk-accom">적용</button>
+  <!-- 일정 일괄 편집 -->
+  <div class="modal" id="modal-bulk-edit" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal-card" style="width:min(640px,96vw);max-height:88vh;display:flex;flex-direction:column;">
+      <div class="t-head" style="margin-bottom:4px;">일정 일괄 편집</div>
+      <p class="t-cap" style="margin-bottom:14px;text-transform:none;letter-spacing:normal;">여러 날짜의 도시·테마·숙소를 한 화면에서 채워 넣으세요.</p>
+      <div id="bulk-edit-list" style="overflow-y:auto;flex:1;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--hairline);">
+        <button class="btn ghost" onclick="document.getElementById('modal-bulk-edit').classList.remove('open')">취소</button>
+        <button class="btn accent" id="btn-save-bulk-edit">저장</button>
       </div>
     </div>
   </div>
@@ -221,59 +210,16 @@
   <div class="modal" id="modal-edit-day" onclick="if(event.target===this)closeEditModal()">
     <div class="modal-card" style="width:min(560px,96vw);max-height:92vh;display:flex;flex-direction:column;">
       <div class="t-head" style="margin-bottom:12px;" id="modal-day-title">편집</div>
-      <!-- 탭 헤더 -->
-      <div class="modal-tabs">
-        <button class="modal-tab active" data-tab="basic" onclick="switchModalTab('basic')">기본 정보</button>
-        <button class="modal-tab" data-tab="expense" onclick="switchModalTab('expense')">지출</button>
-        <button class="modal-tab" data-tab="memo" onclick="switchModalTab('memo')">메모 · 할일</button>
-      </div>
-      <!-- 탭 콘텐츠: overflow-y scroll -->
       <div style="overflow-y:auto;flex:1;padding:4px 0;">
-        <!-- 기본 정보 탭 -->
-        <div id="tab-basic" class="tab-pane">
-          <div class="field"><label>오늘의 테마</label><input class="inp" id="inp-theme" placeholder="예: 방콕 시내 탐방, 이동의 날" /></div>
-          <div class="field"><label>방문 도시</label><input class="inp" id="inp-city" placeholder="예: 방콕, 파리, 도쿄" /></div>
-          <div class="field"><label>숙소 이름</label><input class="inp" id="inp-accom-name" placeholder="숙소 이름" /></div>
-          <div class="field"><label>숙소 구글맵 링크</label><input class="inp" id="inp-accom-map" placeholder="https://maps.google.com/..." /></div>
+        <div class="field"><label>오늘의 테마</label><input class="inp" id="inp-theme" placeholder="예: 방콕 시내 탐방, 이동의 날" /></div>
+        <div class="field"><label>방문 도시</label><input class="inp" id="inp-city" placeholder="예: 방콕, 파리, 도쿄" /></div>
+        <div class="field"><label>숙소 이름</label><input class="inp" id="inp-accom-name" placeholder="숙소 이름" /></div>
+        <div class="field"><label>숙소 구글맵 링크</label><input class="inp" id="inp-accom-map" placeholder="https://maps.google.com/..." /></div>
+        <div class="field"><label>메모 / 일기</label>
+          <textarea class="inp" id="inp-memo" rows="4" placeholder="오늘의 기록..."></textarea>
         </div>
-        <!-- 지출 탭 -->
-        <div id="tab-expense" class="tab-pane" style="display:none;">
-          <div id="expense-list-edit" style="margin-bottom:12px;"></div>
-          <div class="expense-add-row">
-            <select class="inp" id="inp-exp-cat" style="flex:0 0 90px;font-size:.82rem;">
-              <option value="food">식비</option>
-              <option value="transport">교통</option>
-              <option value="lodging">숙박</option>
-              <option value="sightseeing">관광</option>
-              <option value="shopping">쇼핑</option>
-              <option value="etc">기타</option>
-            </select>
-            <input class="inp" id="inp-exp-name" placeholder="항목명" style="flex:1;" />
-            <div style="display:flex;flex-direction:column;gap:2px;">
-              <input type="number" class="inp" id="inp-exp-amount" placeholder="금액" style="width:80px;" min="0" />
-              <span id="exp-krw-preview" style="font-size:.7rem;color:var(--text-3);min-height:13px;padding-left:2px;"></span>
-            </div>
-            <select class="inp" id="inp-exp-currency" style="flex:0 0 70px;font-size:.82rem;">
-              <option value="KRW">₩ KRW</option>
-              <option value="USD">$ USD</option>
-              <option value="JPY">¥ JPY</option>
-              <option value="EUR">€ EUR</option>
-              <option value="THB">฿ THB</option>
-              <option value="VND">₫ VND</option>
-              <option value="SGD">S$ SGD</option>
-              <option value="GBP">£ GBP</option>
-            </select>
-            <button class="btn sm icon-btn" id="btn-add-expense">+</button>
-          </div>
-        </div>
-        <!-- 메모·할일 탭 -->
-        <div id="tab-memo" class="tab-pane" style="display:none;">
-          <div class="field"><label>메모 / 일기</label>
-            <textarea class="inp" id="inp-memo" rows="5" placeholder="오늘의 기록..."></textarea>
-          </div>
-          <div class="field"><label>To-Do 항목 <span style="font-weight:400;color:var(--text-3)">(줄바꿈으로 구분)</span></label>
-            <textarea class="inp" id="inp-todos" rows="4" placeholder="박물관 예약&#10;환전하기"></textarea>
-          </div>
+        <div class="field"><label>To-Do 항목 <span style="font-weight:400;color:var(--text-3)">(줄바꿈으로 구분)</span></label>
+          <textarea class="inp" id="inp-todos" rows="3" placeholder="박물관 예약&#10;환전하기"></textarea>
         </div>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--hairline);">

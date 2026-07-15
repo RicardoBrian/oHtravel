@@ -24,11 +24,7 @@ const db  = getFirestore(app);
 //  상수
 // ══════════════════════════════════════
 const TRANS_ICONS  = { flight:'ic-plane', train:'ic-train', ship:'ic-ship', bus:'ic-bus' };
-const EXP_ICONS    = { food:'ic-food', transport:'ic-bus', lodging:'ic-bed', sightseeing:'ic-camera', shopping:'ic-bag', etc:'ic-box' };
-const EXP_LABELS   = { food:'식비', transport:'교통', lodging:'숙박', sightseeing:'관광', shopping:'쇼핑', etc:'기타' };
 function ic(id, size=15) { return `<svg class="ic" width="${size}" height="${size}"><use href="#${id}"/></svg>`; }
-const EXP_KEYS     = ['food','transport','lodging','sightseeing','shopping','etc'];
-const CURRENCIES   = { KRW:{s:'₩',n:'원'}, USD:{s:'$',n:'달러'}, JPY:{s:'¥',n:'엔'}, EUR:{s:'€',n:'유로'}, THB:{s:'฿',n:'바트'}, VND:{s:'₫',n:'동'}, SGD:{s:'S$',n:'싱가포르달러'}, GBP:{s:'£',n:'파운드'} };
 
 const PACKING_TEMPLATE = ['여권','지갑 / 카드','핸드폰 충전기','이어폰','상비약','세면도구','선크림','보조배터리','어댑터'];
 
@@ -55,7 +51,6 @@ const LS_TRIPS   = 'ohtravel_trips';
 const LS_DAYS    = id => `ohtravel_days_${id}`;
 const LS_TRANS   = id => `ohtravel_trans_${id}`;
 const LS_WEATHER = id => `ohtravel_weather_${id}`;
-const LS_FX      = 'ohtravel_fx';
 const LS_CONFIG  = 'ohtravel_config';
 
 // ══════════════════════════════════════
@@ -69,9 +64,7 @@ let unsubTrips     = null;
 let unsubDays      = null;
 let unsubTrans     = null;
 let editingTransId = null;
-let editingExpenses= [];
 let currentTripRef = null;
-let fxRates        = null;
 let expandedDays   = new Set(); // 기본 접힘 — 명시적으로 펼친 날짜만 추적
 let pendingDelete  = null;
 
@@ -191,31 +184,6 @@ function generateDays(s, e) {
   const days = []; let cur = new Date(s+'T00:00:00'); const end = new Date(e+'T00:00:00'); let i = 1;
   while (cur <= end) { days.push({ date: localDateStr(cur), dayIndex: i++ }); cur.setDate(cur.getDate()+1); }
   return days;
-}
-
-// ── 환율 ──
-async function loadFxRates() {
-  const cached = localStorage.getItem(LS_FX);
-  if (cached) { const p = JSON.parse(cached); if (p.expires > Date.now()) { fxRates = p.rates; return; } }
-  try {
-    const res = await fetch('https://open.er-api.com/v6/latest/USD');
-    const data = await res.json();
-    fxRates = data.rates;
-    localStorage.setItem(LS_FX, JSON.stringify({ rates: fxRates, expires: Date.now() + 86400000 }));
-  } catch { /* 환율 없이 진행 */ }
-}
-
-function toKRW(amount, currency) {
-  if (!currency || currency === 'KRW' || !fxRates) return Number(amount);
-  const usd = Number(amount) / (fxRates[currency] || 1);
-  return Math.round(usd * (fxRates['KRW'] || 1300));
-}
-
-function fmtExpenseAmount(amount, currency) {
-  const c = CURRENCIES[currency] || CURRENCIES.KRW;
-  if (!currency || currency === 'KRW') return fmtMoney(amount);
-  const krw = toKRW(amount, currency);
-  return `${c.s}${Number(amount).toLocaleString()} <span class="expense-krw">(≈${fmtMoney(krw)})</span>`;
 }
 
 // ══════════════════════════════════════
@@ -485,7 +453,7 @@ async function showTimelineView(tripId) {
 
     const actionBtnsHtml = `
       <button class="btn sm" data-action="transport">${ic('ic-plane',14)} 교통 등록</button>
-      <button class="btn sm" data-action="bulk-accom">${ic('ic-bed',14)} 숙소 일괄</button>
+      <button class="btn sm" data-action="bulk-edit">${ic('ic-calendar',14)} 일괄 편집</button>
       <button class="btn sm ghost" data-action="packing">${ic('ic-suitcase',14)} 준비물</button>
       <button class="btn sm ghost" data-action="share">${ic('ic-share',14)} 공유</button>
       <button class="btn sm ghost" data-action="data-io">${ic('ic-folder',14)} 백업</button>
@@ -500,7 +468,7 @@ async function showTimelineView(tripId) {
         if (!btn) return;
         const a = btn.dataset.action;
         if      (a==='transport')  openTransportModal(null, tripId);
-        else if (a==='bulk-accom') openBulkAccomModal(tripId);
+        else if (a==='bulk-edit')  openBulkEditModal(tripId);
         else if (a==='packing')    openPackingModal(tripId);
         else if (a==='share') {
           const url = `${location.origin}${location.pathname}?tripId=${tripId}&view=share`;
@@ -568,14 +536,8 @@ function renderTimeline(days, dayData, transData, weather, tripId) {
   const container = $('timeline-list'); container.innerHTML = '';
   const today = todayStr();
 
-  // 여행 진행률
-  renderTripProgress(days, today);
-
-  // 숙소 미정 요약
-  renderMissingAccomSummary(days, dayData);
-
-  // 날짜 이동 드롭다운
-  renderDateJump(days);
+  // 여행 상태 (진행률 + 숙소 미정 + 날짜 이동)
+  renderTripStatus(days, today, dayData);
 
   days.forEach(({ date, dayIndex }, idx) => {
     const data     = dayData[date] || {};
@@ -619,51 +581,46 @@ function renderTimeline(days, dayData, transData, weather, tripId) {
   if (todayCard) setTimeout(() => todayCard.scrollIntoView({behavior:'smooth',block:'start'}), 300);
 }
 
-function renderTripProgress(days, today) {
-  const wrap = $('trip-progress-wrap');
+function renderTripStatus(days, today, dayData) {
+  const wrap = $('trip-status-wrap');
   if (!wrap) return;
-  const total   = days.length;
-  const elapsed = days.filter(d => d.date <= today).length;
+
+  const total    = days.length;
+  const elapsed  = days.filter(d => d.date <= today).length;
   const isActive = elapsed > 0 && elapsed < total;
-  if (!isActive) { wrap.innerHTML = ''; return; }
-  const pct = Math.round(elapsed / total * 100);
+  const pct      = isActive ? Math.round(elapsed / total * 100) : 0;
+
+  const missing = isReadOnly ? [] : days.filter(d => d.date >= today && !dayData[d.date]?.accommodation);
+  const showJump = days.length >= 5;
+
+  if (!isActive && !missing.length && !showJump) { wrap.innerHTML = ''; return; }
+
+  const progressHtml = isActive
+    ? `<span class="trip-status-progress">Day ${elapsed}/${total} · ${pct}%</span>` : '';
+  const missingHtml = missing.length
+    ? `<button type="button" class="trip-status-missing" title="클릭 시 첫 미정 날짜로 이동">${ic('ic-warning',13)} 숙소 미정 ${missing.length}일</button>` : '';
+  const jumpHtml = showJump
+    ? `<select class="inp trip-status-jump"><option value="">날짜 이동...</option>${days.map(d=>`<option value="${d.date}">Day ${d.dayIndex} · ${fmtDateShort(d.date)}</option>`).join('')}</select>` : '';
+
   wrap.innerHTML = `
-    <div class="trip-progress">
-      <div class="trip-progress-bar" style="width:${pct}%"></div>
-    </div>
-    <div class="trip-progress-label">${elapsed} / ${total}일 경과 · ${pct}%</div>`;
-}
+    ${isActive ? `<div class="trip-progress"><div class="trip-progress-bar" style="width:${pct}%"></div></div>` : ''}
+    <div class="trip-status-row">${progressHtml}${missingHtml}${jumpHtml}</div>`;
 
-function renderMissingAccomSummary(days, dayData) {
-  const el = $('accom-missing-summary');
-  if (isReadOnly) { el.innerHTML = ''; return; }
-  const today = todayStr();
-  const missing = days.filter(d => d.date >= today && !dayData[d.date]?.accommodation);
-  if (!missing.length) { el.innerHTML = ''; return; }
-  const preview = missing.slice(0,3).map(d => fmtDateShort(d.date)).join(', ');
-  const more = missing.length > 3 ? ` 외 ${missing.length-3}건` : '';
-  el.innerHTML = `<div class="missing-accom-banner" title="클릭 시 첫 미정 날짜로 이동">${ic('ic-warning',14)} 숙소 미정 <strong>${missing.length}일</strong> — ${preview}${more}</div>`;
-  el.querySelector('.missing-accom-banner').onclick = () => {
-    const card = document.getElementById(`day-${missing[0].date}`);
-    if (card) card.scrollIntoView({behavior:'smooth',block:'start'});
-  };
-}
-
-function renderDateJump(days) {
-  const wrap = $('date-jump-wrap');
-  if (days.length < 5) { wrap.innerHTML = ''; return; }
-  const select = document.createElement('select');
-  select.className = 'inp date-jump-select';
-  select.innerHTML = `<option value="">날짜 이동...</option>` +
-    days.map(d => `<option value="${d.date}">Day ${d.dayIndex} · ${fmtDateShort(d.date)}</option>`).join('');
-  select.onchange = () => {
-    if (!select.value) return;
-    const card = document.getElementById(`day-${select.value}`);
-    if (card) card.scrollIntoView({behavior:'smooth',block:'start'});
-    setTimeout(() => { select.value = ''; }, 100);
-  };
-  wrap.innerHTML = '';
-  wrap.appendChild(select);
+  if (missing.length) {
+    wrap.querySelector('.trip-status-missing').onclick = () => {
+      const card = document.getElementById(`day-${missing[0].date}`);
+      if (card) card.scrollIntoView({behavior:'smooth',block:'start'});
+    };
+  }
+  if (showJump) {
+    const select = wrap.querySelector('.trip-status-jump');
+    select.onchange = () => {
+      if (!select.value) return;
+      const card = document.getElementById(`day-${select.value}`);
+      if (card) card.scrollIntoView({behavior:'smooth',block:'start'});
+      setTimeout(() => { select.value = ''; }, 100);
+    };
+  }
 }
 
 function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo) {
@@ -729,18 +686,6 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
     return `<div class="accom-row">${badge}${escHtml(data.accommodation)}${mapBtn}</div>`;
   })() : '';
 
-  // ── 지출 (내용 있을 때만) ──
-  const expenses = data.expenses || [];
-  const expTotalKRW = expenses.reduce((s,e) => s+toKRW(e.amount,e.currency), 0);
-  const expHtml = expenses.length ? `
-    <div class="expense-list">${expenses.map(e=>`
-      <div class="expense-row">
-        <span class="expense-cat">${ic(EXP_ICONS[e.category]||'ic-box',13)} ${EXP_LABELS[e.category]||e.category}</span>
-        <span class="expense-name">${escHtml(e.name)}</span>
-        <span class="expense-amount">${fmtExpenseAmount(e.amount,e.currency)}</span>
-      </div>`).join('')}</div>
-    <div class="expense-total">합계 ${fmtMoney(expTotalKRW)}</div>` : '';
-
   // ── 메모 (내용 있을 때만) ──
   const memoHtml = data.memo ? `<div class="memo-box">${autoLink(data.memo)}</div>` : '';
 
@@ -765,7 +710,6 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
   const sections = [
     transHtml  ? `<div class="day-section">${transHtml}</div>` : '',
     accomHtml  ? `<div class="day-section"><div class="day-section-label">${ic('ic-bed',13)} 숙소</div>${accomHtml}</div>` : '',
-    expHtml    ? `<div class="day-section"><div class="day-section-label">${ic('ic-wallet',13)} 지출</div>${expHtml}</div>` : '',
     memoHtml   ? `<div class="day-section"><div class="day-section-label">${ic('ic-note',13)} 메모</div>${memoHtml}</div>` : '',
     todoHtml   ? `<div class="day-section"><div class="day-section-label">${ic('ic-checklist',13)} To-Do</div>${todoHtml}</div>` : '',
   ].filter(Boolean).join('');
@@ -775,7 +719,6 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
     weather ? `${ic(WC_ICONS[weather.code]||'ic-cloud',13)} ${weather.max}°` : '',
     data.accommodation || (hasMissingAccom && !isReadOnly ? '숙소 미정' : ''),
     dayTrans.length ? `${ic(TRANS_ICONS[dayTrans[0].type]||'ic-car',13)} ${escHtml(dayTrans[0].fromCity||'')}→${escHtml(dayTrans[0].toCity||'')}` : '',
-    expenses.length ? `${ic('ic-wallet',13)} ${fmtMoney(expTotalKRW)}` : '',
   ].filter(Boolean);
 
   card.innerHTML = `
@@ -805,7 +748,7 @@ window.toggleDayCollapse = function(date, e) {
   const collapsed = !expandedDays.has(date);
   card.classList.toggle('collapsed', collapsed);
   const btn = card.querySelector('.collapse-btn');
-  if (btn) btn.textContent = collapsed ? '▼' : '▲';
+  if (btn) btn.title = collapsed ? '펼치기' : '접기';
 };
 
 // ══════════════════════════════════════
@@ -911,45 +854,74 @@ window.copyTransport = function(from, to, booking) {
 };
 
 // ══════════════════════════════════════
-//  숙소 일괄 등록
+//  일정 일괄 편집 (여행 전 계획용)
 // ══════════════════════════════════════
-function openBulkAccomModal(tripId) {
-  $('inp-bulk-accom-name').value = '';
-  $('inp-bulk-accom-map').value  = '';
-  $('inp-bulk-start').value = currentTripRef?.startDate || '';
-  $('inp-bulk-end').value   = currentTripRef?.endDate   || '';
-  $('btn-save-bulk-accom').onclick = () => saveBulkAccom(tripId);
-  $('modal-bulk-accom').classList.add('open');
+function openBulkEditModal(tripId) {
+  const days    = generateDays(currentTripRef.startDate, currentTripRef.endDate);
+  const dayData = JSON.parse(localStorage.getItem(LS_DAYS(tripId))||'{}');
+
+  $('bulk-edit-list').innerHTML = `
+    <div class="bulk-fill-row">
+      <input class="inp" id="bulk-fill-accom" placeholder="숙소 이름" style="flex:1;min-width:120px;" />
+      <input type="date" class="inp" id="bulk-fill-start" style="flex:0 0 132px;" value="${currentTripRef.startDate}" />
+      <input type="date" class="inp" id="bulk-fill-end" style="flex:0 0 132px;" value="${currentTripRef.endDate}" />
+      <button type="button" class="btn sm ghost" id="btn-bulk-fill">채우기</button>
+    </div>
+    <div class="bulk-edit-head">
+      <span></span><span>도시</span><span>테마</span><span>숙소</span>
+    </div>
+    <div class="bulk-edit-rows">${days.map(({date, dayIndex}) => {
+      const d = dayData[date] || {};
+      return `
+      <div class="bulk-edit-row" data-date="${date}">
+        <div class="bulk-edit-daylabel">Day ${dayIndex}<span>${fmtDateShort(date)}</span></div>
+        <input class="inp bulk-city"  placeholder="도시" value="${escHtml(d.city||'')}" />
+        <input class="inp bulk-theme" placeholder="테마" value="${escHtml(d.theme||'')}" />
+        <input class="inp bulk-accom" placeholder="숙소" value="${escHtml(d.accommodation||'')}" />
+      </div>`;
+    }).join('')}</div>`;
+
+  $('btn-bulk-fill').onclick = () => {
+    const name  = $('bulk-fill-accom').value.trim();
+    const start = $('bulk-fill-start').value;
+    const end   = $('bulk-fill-end').value;
+    if (!name || !start || !end) { showToast('숙소 이름과 날짜 범위를 입력하세요'); return; }
+    document.querySelectorAll('.bulk-edit-row').forEach(row => {
+      if (row.dataset.date >= start && row.dataset.date <= end) row.querySelector('.bulk-accom').value = name;
+    });
+  };
+
+  $('btn-save-bulk-edit').onclick = () => saveBulkEdit(tripId);
+  $('modal-bulk-edit').classList.add('open');
 }
 
-async function saveBulkAccom(tripId) {
-  const name  = $('inp-bulk-accom-name').value.trim();
-  const map   = $('inp-bulk-accom-map').value.trim();
-  const start = $('inp-bulk-start').value;
-  const end   = $('inp-bulk-end').value;
-  if (!name)        { showToast('숙소 이름을 입력하세요'); return; }
-  if (!start||!end) { showToast('날짜를 입력하세요'); return; }
-  if (start > end)  { showToast('종료일이 시작일보다 빠릅니다'); return; }
-  $('modal-bulk-accom').classList.remove('open');
+async function saveBulkEdit(tripId) {
+  const cacheKey = LS_DAYS(tripId);
+  const dayData  = JSON.parse(localStorage.getItem(cacheKey)||'{}');
+  const saves = [];
 
-  const days    = generateDays(start, end);
-  const cacheKey= LS_DAYS(tripId);
-  const dayData = JSON.parse(localStorage.getItem(cacheKey)||'{}');
-
-  const saves = days.map(async ({ date }) => {
-    if (!dayData[date]) dayData[date] = {};
-    dayData[date].accommodation    = name;
-    dayData[date].accommodationMap = map;
-    try {
-      const ref = doc(db,'trips',tripId,'days',date);
-      try { await updateDoc(ref, {accommodation:name, accommodationMap:map}); }
-      catch { await setDoc(ref, dayData[date]); }
-    } catch { /* offline */ }
+  document.querySelectorAll('.bulk-edit-row').forEach(row => {
+    const date  = row.dataset.date;
+    const city  = row.querySelector('.bulk-city').value.trim();
+    const theme = row.querySelector('.bulk-theme').value.trim();
+    const accom = row.querySelector('.bulk-accom').value.trim();
+    const prev  = dayData[date] || {};
+    if (prev.city === city && prev.theme === theme && prev.accommodation === accom) return;
+    dayData[date] = { ...prev, city, theme, accommodation: accom };
+    saves.push((async () => {
+      try {
+        const ref = doc(db,'trips',tripId,'days',date);
+        try { await updateDoc(ref, {city, theme, accommodation:accom}); }
+        catch { await setDoc(ref, dayData[date]); }
+      } catch { /* offline */ }
+    })());
   });
 
+  if (!saves.length) { $('modal-bulk-edit').classList.remove('open'); showToast('변경 사항 없음'); return; }
+  $('modal-bulk-edit').classList.remove('open');
   await Promise.all(saves);
   localStorage.setItem(cacheKey, JSON.stringify(dayData));
-  showToast(`${days.length}일치 숙소 등록 완료`);
+  showToast(`${saves.length}일 저장됨`);
 
   if (currentTripRef) {
     const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
@@ -1022,32 +994,10 @@ window.openEditModal = function(date, tripId) {
   $('inp-accom-map').value  = data.accommodationMap||'';
   $('inp-memo').value       = data.memo||'';
   $('inp-todos').value      = (data.todos||[]).map(t=>t.text).join('\n');
-  editingExpenses = JSON.parse(JSON.stringify(data.expenses||[]));
-  renderEditExpenses();
   $('btn-save-day').onclick = () => saveDayEdit(tripId, date);
-  switchModalTab('basic');
   $('modal-edit-day').classList.add('open');
 };
 window.closeEditModal  = function() { $('modal-edit-day').classList.remove('open'); };
-
-function renderEditExpenses() {
-  $('expense-list-edit').innerHTML = editingExpenses.map((e,i) => `
-    <div class="expense-item-edit">
-      <span class="exp-cat">${ic(EXP_ICONS[e.category]||'ic-box',13)} ${EXP_LABELS[e.category]||e.category}</span>
-      <span class="exp-name">${escHtml(e.name)}</span>
-      <span class="exp-amt">${e.currency&&e.currency!=='KRW'?`${CURRENCIES[e.currency]?.s||''}${Number(e.amount).toLocaleString()}`:fmtMoney(e.amount)}</span>
-      <button class="icon-action sm danger" style="margin-left:auto;" title="삭제" onclick="removeEditExpense(${i})">${ic('ic-close',14)}</button>
-    </div>`).join('') || `<div class="t-cap" style="margin-bottom:6px;">없음</div>`;
-}
-window.removeEditExpense = function(idx) { editingExpenses.splice(idx,1); renderEditExpenses(); };
-
-function addEditExpense() {
-  const cat=($('inp-exp-cat').value), name=($('inp-exp-name').value.trim()), amount=Number($('inp-exp-amount').value), currency=$('inp-exp-currency').value;
-  if (!name||!amount) { showToast('항목명과 금액을 입력하세요'); return; }
-  editingExpenses.push({id:genId(), category:cat, name, amount, currency});
-  $('inp-exp-name').value=''; $('inp-exp-amount').value='';
-  renderEditExpenses();
-}
 
 async function saveDayEdit(tripId, date) {
   const prevData = JSON.parse(localStorage.getItem(LS_DAYS(tripId))||'{}')?.[date]||{};
@@ -1060,7 +1010,7 @@ async function saveDayEdit(tripId, date) {
     theme:$('inp-theme').value.trim(),
     city:$('inp-city').value.trim(), accommodation:$('inp-accom-name').value.trim(),
     accommodationMap:$('inp-accom-map').value.trim(), memo:$('inp-memo').value.trim(),
-    todos, expenses:editingExpenses,
+    todos,
   };
   closeEditModal();
   const cacheKey = LS_DAYS(tripId);
@@ -1162,17 +1112,11 @@ async function importJSON(tripId, text) {
   } catch(err) { showToast('복원 실패: ' + err.message); }
 }
 
-window.switchModalTab = function(tab) {
-  document.querySelectorAll('.modal-tab').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
-  document.querySelectorAll('.tab-pane').forEach(p => { p.style.display = p.id === `tab-${tab}` ? '' : 'none'; });
-};
-
 // ══════════════════════════════════════
 //  이벤트 바인딩
 // ══════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
   if (!isOnline) { const b=$('offline-banner'); if(b) b.style.display='block'; }
-  loadFxRates();
 
   // 입장 코드
   $('btn-entry-submit').addEventListener('click', handleEntrySubmit);
@@ -1194,9 +1138,6 @@ document.addEventListener('DOMContentLoaded', () => {
     currentTripRef=null; navigate(null);
   });
 
-  // 지출
-  $('btn-add-expense').addEventListener('click', addEditExpense);
-
   // 파일 가져오기 핸들러
   $('file-import-json').addEventListener('change', e => {
     const f = e.target.files[0]; if (!f) return;
@@ -1204,17 +1145,6 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.onload = ev => importJSON(currentTripId, ev.target.result);
     reader.readAsText(f); e.target.value='';
   });
-  $('inp-exp-amount').addEventListener('keydown', e => { if(e.key==='Enter') addEditExpense(); });
-  const updateExpPreview = () => {
-    const amount = Number($('inp-exp-amount').value);
-    const currency = $('inp-exp-currency').value;
-    const preview = $('exp-krw-preview');
-    if (!preview) return;
-    if (!amount || !currency || currency === 'KRW' || !fxRates) { preview.textContent = ''; return; }
-    preview.textContent = `≈ ${fmtMoney(toKRW(amount, currency))}`;
-  };
-  $('inp-exp-amount').addEventListener('input', updateExpPreview);
-  $('inp-exp-currency').addEventListener('change', updateExpPreview);
 
   // 준비물 템플릿
   $('tpl-basic').addEventListener('click', () => applyPackingTemplate(currentTripId));
