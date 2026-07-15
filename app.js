@@ -51,46 +51,6 @@ function cityColor(city) {
 
 const WC_ICONS = {0:'ic-sun',1:'ic-cloud-sun',2:'ic-cloud-sun',3:'ic-cloud',45:'ic-cloud',48:'ic-cloud',51:'ic-cloud-rain',53:'ic-cloud-rain',55:'ic-cloud-rain',61:'ic-cloud-rain',63:'ic-cloud-rain',65:'ic-cloud-rain',71:'ic-cloud-snow',73:'ic-cloud-snow',75:'ic-cloud-snow',77:'ic-cloud-snow',80:'ic-cloud-rain',81:'ic-cloud-rain',82:'ic-cloud-storm',85:'ic-cloud-snow',86:'ic-cloud-snow',95:'ic-cloud-storm',96:'ic-cloud-storm',99:'ic-cloud-storm'};
 
-// IATA 공항코드 → 국기
-const IATA_FLAGS = {
-  ICN:'🇰🇷',GMP:'🇰🇷',PUS:'🇰🇷',CJU:'🇰🇷',RSU:'🇰🇷',KWJ:'🇰🇷',TAE:'🇰🇷',
-  NRT:'🇯🇵',HND:'🇯🇵',KIX:'🇯🇵',ITM:'🇯🇵',CTS:'🇯🇵',FUK:'🇯🇵',OKA:'🇯🇵',NGO:'🇯🇵',SDJ:'🇯🇵',
-  PEK:'🇨🇳',PKX:'🇨🇳',PVG:'🇨🇳',SHA:'🇨🇳',CAN:'🇨🇳',CTU:'🇨🇳',SZX:'🇨🇳',WUH:'🇨🇳',XIY:'🇨🇳',
-  BKK:'🇹🇭',DMK:'🇹🇭',HKT:'🇹🇭',CNX:'🇹🇭',USM:'🇹🇭',KBV:'🇹🇭',HDY:'🇹🇭',
-  SGN:'🇻🇳',HAN:'🇻🇳',DAD:'🇻🇳',PQC:'🇻🇳',VCA:'🇻🇳',
-  SIN:'🇸🇬',
-  CGK:'🇮🇩',DPS:'🇮🇩',SUB:'🇮🇩',MDC:'🇮🇩',LOP:'🇮🇩',PLM:'🇮🇩',
-  KUL:'🇲🇾',PEN:'🇲🇾',LGK:'🇲🇾',BKI:'🇲🇾',KCH:'🇲🇾',
-  MNL:'🇵🇭',CEB:'🇵🇭',KLO:'🇵🇭',ILO:'🇵🇭',DVO:'🇵🇭',
-  TPE:'🇹🇼',TSA:'🇹🇼',KHH:'🇹🇼',TNN:'🇹🇼',
-  HKG:'🇭🇰', MFM:'🇲🇴',
-  DEL:'🇮🇳',BOM:'🇮🇳',BLR:'🇮🇳',MAA:'🇮🇳',CCU:'🇮🇳',HYD:'🇮🇳',
-  KTM:'🇳🇵', CMB:'🇱🇰', MLE:'🇲🇻', DAC:'🇧🇩',
-  PNH:'🇰🇭',REP:'🇰🇭', RGN:'🇲🇲',MDL:'🇲🇲', VTE:'🇱🇦', BWN:'🇧🇳',
-  JFK:'🇺🇸',LAX:'🇺🇸',SFO:'🇺🇸',ORD:'🇺🇸',ATL:'🇺🇸',MIA:'🇺🇸',SEA:'🇺🇸',BOS:'🇺🇸',LAS:'🇺🇸',DFW:'🇺🇸',DEN:'🇺🇸',HNL:'🇺🇸',IAD:'🇺🇸',EWR:'🇺🇸',LGA:'🇺🇸',
-  LHR:'🇬🇧',LGW:'🇬🇧',STN:'🇬🇧',MAN:'🇬🇧',EDI:'🇬🇧',BHX:'🇬🇧',
-  CDG:'🇫🇷',ORY:'🇫🇷',NCE:'🇫🇷',LYS:'🇫🇷',MRS:'🇫🇷',
-  FRA:'🇩🇪',MUC:'🇩🇪',BER:'🇩🇪',DUS:'🇩🇪',HAM:'🇩🇪',STR:'🇩🇪',CGN:'🇩🇪',
-  FCO:'🇮🇹',MXP:'🇮🇹',VCE:'🇮🇹',NAP:'🇮🇹',PSA:'🇮🇹',BGY:'🇮🇹',BLQ:'🇮🇹',
-  MAD:'🇪🇸',BCN:'🇪🇸',AGP:'🇪🇸',PMI:'🇪🇸',VLC:'🇪🇸',SVQ:'🇪🇸',
-  AMS:'🇳🇱', ZRH:'🇨🇭',GVA:'🇨🇭', VIE:'🇦🇹', BRU:'🇧🇪',
-  LIS:'🇵🇹',OPO:'🇵🇹', ATH:'🇬🇷',SKG:'🇬🇷',HER:'🇬🇷',RHO:'🇬🇷',CFU:'🇬🇷',
-  IST:'🇹🇷',SAW:'🇹🇷',AYT:'🇹🇷',ADB:'🇹🇷',ESB:'🇹🇷',
-  DXB:'🇦🇪',AUH:'🇦🇪',SHJ:'🇦🇪', DOH:'🇶🇦', RUH:'🇸🇦',JED:'🇸🇦',
-  TLV:'🇮🇱', AMM:'🇯🇴', BEY:'🇱🇧', CAI:'🇪🇬',HRG:'🇪🇬',SSH:'🇪🇬',
-  SYD:'🇦🇺',MEL:'🇦🇺',BNE:'🇦🇺',PER:'🇦🇺',ADL:'🇦🇺',CNS:'🇦🇺',
-  AKL:'🇳🇿',CHC:'🇳🇿',WLG:'🇳🇿',
-  YYZ:'🇨🇦',YVR:'🇨🇦',YUL:'🇨🇦',YYC:'🇨🇦',
-  MEX:'🇲🇽',CUN:'🇲🇽',GDL:'🇲🇽',
-  GRU:'🇧🇷',GIG:'🇧🇷',BSB:'🇧🇷',
-  EZE:'🇦🇷',AEP:'🇦🇷',
-  SVO:'🇷🇺',DME:'🇷🇺',LED:'🇷🇺',
-  PRG:'🇨🇿', BUD:'🇭🇺', WAW:'🇵🇱',KRK:'🇵🇱',
-  ARN:'🇸🇪',GOT:'🇸🇪', OSL:'🇳🇴', CPH:'🇩🇰', HEL:'🇫🇮',
-  CMN:'🇲🇦',RAK:'🇲🇦', JNB:'🇿🇦',CPT:'🇿🇦', NBO:'🇰🇪', ADD:'🇪🇹',
-  DAR:'🇹🇿',JRO:'🇹🇿',
-};
-
 const LS_TRIPS   = 'ohtravel_trips';
 const LS_DAYS    = id => `ohtravel_days_${id}`;
 const LS_TRANS   = id => `ohtravel_trans_${id}`;
@@ -219,12 +179,6 @@ function calcTransDuration(departDate, departTime, arriveDate, arriveTime) {
   return h > 0 ? (m > 0 ? `${h}시간 ${m}분` : `${h}시간`) : `${m}분`;
 }
 function genId()    { return Math.random().toString(36).slice(2,10); }
-
-function getAirportFlag(code) {
-  if (!code) return '';
-  const upper = code.trim().toUpperCase();
-  return IATA_FLAGS[upper] ? IATA_FLAGS[upper] + ' ' : '';
-}
 
 function calcDDay(s, e) {
   const today = new Date(); today.setHours(0,0,0,0);
@@ -781,12 +735,11 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
       isArrive&&t.arriveTime?`도착 ${t.arriveTime}`:''
     ].filter(Boolean).join(' → ');
     const durationStr = duration ? ` <span class="trans-duration">${duration}</span>` : '';
-    const fromFlag = getAirportFlag(t.fromCity), toFlag = getAirportFlag(t.toCity);
     const actBtns = isReadOnly ? '' :
       `<button class="icon-action sm" title="편집" onclick="openTransportModal('${t.id}','${tripId}')"><svg class="ic" width="15" height="15"><use href="#ic-edit"/></svg></button>
        <button class="icon-action sm danger" title="삭제" onclick="deleteTransport('${t.id}','${tripId}')"><svg class="ic" width="15" height="15"><use href="#ic-trash"/></svg></button>`;
     return `<div class="transport-item">
-      <div class="transport-route">${ic(TRANS_ICONS[t.type]||'ic-car',15)} <b>${fromFlag}${escHtml(t.fromCity||'?')}</b><span class="arrow">→</span><b>${toFlag}${escHtml(t.toCity||'?')}</b>${badge}</div>
+      <div class="transport-route">${ic(TRANS_ICONS[t.type]||'ic-car',15)} <b>${escHtml(t.fromCity||'?')}</b><span class="arrow">→</span><b>${escHtml(t.toCity||'?')}</b>${badge}</div>
       ${timeStr?`<div class="transport-meta">${ic('ic-clock',13)} ${timeStr}${durationStr}</div>`:''}
       ${t.bookingNo?`<div class="transport-booking">${ic('ic-clipboard',13)} ${escHtml(t.bookingNo)}</div>`:''}
       ${t.memo?`<div class="transport-booking" style="color:var(--text-2)">${ic('ic-message',13)} ${escHtml(t.memo)}</div>`:''}

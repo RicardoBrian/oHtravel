@@ -430,11 +430,11 @@ select.inp {
 }
 .day-header-actions { display: flex; align-items: center; gap: 6px; }
 
-.collapse-btn {
-  opacity: 0; transition: opacity var(--dur) var(--ease);
-  font-size: .75rem !important; padding: 4px 8px !important;
+.collapse-btn { transition: opacity var(--dur) var(--ease); }
+@media (hover: hover) {
+  .collapse-btn { opacity: 0; }
+  .day-card:hover .collapse-btn { opacity: 1; }
 }
-.day-card:hover .collapse-btn { opacity: 1; }
 
 .day-card-summary {
   display: none;
@@ -451,8 +451,11 @@ select.inp {
 .weather-hint  { font-size: .78rem; color: var(--text-3); font-style: italic; }
 .missing-accom-badge { font-size: .72rem; font-weight: 700; padding: 2px 8px; background: var(--danger-light); color: var(--danger); border-radius: var(--radius-pill); }
 
-.day-edit-btn { opacity: 0; transition: opacity var(--dur) var(--ease); flex-shrink: 0; }
-.day-card:hover .day-edit-btn { opacity: 1; }
+.day-edit-btn { transition: opacity var(--dur) var(--ease); flex-shrink: 0; }
+@media (hover: hover) {
+  .day-edit-btn { opacity: 0; }
+  .day-card:hover .day-edit-btn { opacity: 1; }
+}
 
 .day-sections {}
 .day-section { margin-bottom: 14px; }
@@ -473,9 +476,12 @@ select.inp {
 .trans-duration { font-size: .78rem; color: var(--accent); font-weight: 700; margin-left: 6px; }
 .transport-actions {
   display: flex; gap: 6px; margin-top: 8px;
-  opacity: 0; transition: opacity var(--dur) var(--ease);
+  transition: opacity var(--dur) var(--ease);
 }
-.transport-item:hover .transport-actions { opacity: 1; }
+@media (hover: hover) {
+  .transport-actions { opacity: 0; }
+  .transport-item:hover .transport-actions { opacity: 1; }
+}
 .transit-day-badge { font-size: .72rem; font-weight: 700; padding: 2px 8px; background: var(--warn-light); color: var(--warn); border-radius: var(--radius-pill); }
 
 /* 숙소 */
