@@ -144,6 +144,18 @@ function autoLink(text) {
   ).join('');
 }
 
+// "10:00 박물관 예약" → { time:'10:00', text:'박물관 예약' } / 시간 없으면 { time:null, text:raw }
+function parseTodoInput(raw) {
+  const m = raw.trim().match(/^([01]?\d|2[0-3]):([0-5]\d)\s+(.+)/);
+  return m ? { time: `${m[1].padStart(2,'0')}:${m[2]}`, text: m[3].trim() } : { time: null, text: raw.trim() };
+}
+
+// 내용 있을 때만 "메모" 칩 렌더 — 탭하면 펼쳐짐
+function memoChip(text) {
+  if (!text) return '';
+  return `<button type="button" class="memo-chip" onclick="this.nextElementSibling.classList.toggle('open')">${ic('ic-message',12)} 메모</button><div class="memo-note">${autoLink(text)}</div>`;
+}
+
 function fmtDate(d) {
   if (!d) return '';
   return new Date(d+'T00:00:00').toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
@@ -560,10 +572,18 @@ function renderTimeline(days, dayData, transData, weather, tripId) {
     // stay       = 연박 중간 (변화 없음)
     let accomInfo = null;
     if (curAccom) {
-      if (curAccom !== prevAccom && prevAccom) accomInfo = { type: 'transition', prevAccom };
-      else if (curAccom !== prevAccom)          accomInfo = { type: 'checkin' };
-      else if (!nextAccom)                      accomInfo = { type: 'checkout' };
-      else                                      accomInfo = { type: 'stay' };
+      const isFreshCheckin = curAccom !== prevAccom;
+      // 체크인 당일부터 같은 숙소가 연속되는 일수
+      let nights = 0;
+      if (isFreshCheckin) {
+        for (let j = idx; j < days.length; j++) {
+          if ((dayData[days[j].date]?.accommodation || '') === curAccom) nights++; else break;
+        }
+      }
+      if (isFreshCheckin && prevAccom) accomInfo = { type: 'transition', prevAccom, prevAccomMap: dayData[days[idx-1].date]?.accommodationMap || '', nights };
+      else if (isFreshCheckin)          accomInfo = { type: 'checkin', nights };
+      else if (!nextAccom)              accomInfo = { type: 'checkout' };
+      else                              accomInfo = { type: 'stay' };
     }
 
     const wrapper = document.createElement('div');
@@ -667,40 +687,55 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
       <div class="transport-route">${ic(TRANS_ICONS[t.type]||'ic-car',15)} <b>${escHtml(t.fromCity||'?')}</b><span class="arrow">→</span><b>${escHtml(t.toCity||'?')}</b>${badge}</div>
       ${timeStr?`<div class="transport-meta">${ic('ic-clock',13)} ${timeStr}${durationStr}</div>`:''}
       ${t.bookingNo?`<div class="transport-booking">${ic('ic-clipboard',13)} ${escHtml(t.bookingNo)}</div>`:''}
-      ${t.memo?`<div class="transport-booking" style="color:var(--text-2)">${ic('ic-message',13)} ${escHtml(t.memo)}</div>`:''}
+      ${memoChip(t.memo)}
       ${actBtns?`<div class="transport-actions">${actBtns}</div>`:''}
     </div>`;
   }).join('') : '';
 
   // ── 숙소 (내용 있을 때만) ──
   const accomHtml = data.accommodation ? (() => {
-    const mapBtn = data.accommodationMap ? ` <a href="${escHtml(data.accommodationMap)}" target="_blank" rel="noopener" class="accom-link">${ic('ic-map',13)} 지도</a>` : '';
     const t = accomInfo?.type;
+    const nameLink = (name, mapUrl) => mapUrl
+      ? `<a href="${escHtml(mapUrl)}" target="_blank" rel="noopener" class="accom-link">${escHtml(name)}</a>`
+      : escHtml(name);
+    const accomMemoHtml = memoChip(data.accommodationMemo);
     if (t === 'transition') {
       // 전환일: 이전 숙소 체크아웃 + 새 숙소 체크인 두 줄
-      return `<div class="accom-row"><span class="accom-status-badge checkout">체크아웃</span>${escHtml(accomInfo.prevAccom)}</div>
-              <div class="accom-row" style="margin-top:6px"><span class="accom-status-badge checkin">체크인</span>${escHtml(data.accommodation)}${mapBtn}</div>`;
+      const nightsTag = accomInfo.nights ? ` <span class="accom-nights">${accomInfo.nights}박</span>` : '';
+      return `<div class="accom-row"><span class="accom-status-badge checkout">체크아웃</span>${nameLink(accomInfo.prevAccom, accomInfo.prevAccomMap)}</div>
+              <div class="accom-row" style="margin-top:6px"><span class="accom-status-badge checkin">체크인</span>${nameLink(data.accommodation, data.accommodationMap)}${nightsTag}</div>
+              ${accomMemoHtml}`;
     }
     const badge = t === 'checkin'  ? `<span class="accom-status-badge checkin">체크인</span>` :
                   t === 'checkout' ? `<span class="accom-status-badge checkout">체크아웃</span>` : '';
-    return `<div class="accom-row">${badge}${escHtml(data.accommodation)}${mapBtn}</div>`;
+    const nightsTag = (t === 'checkin' && accomInfo.nights) ? ` <span class="accom-nights">${accomInfo.nights}박</span>` : '';
+    return `<div class="accom-row">${badge}${nameLink(data.accommodation, data.accommodationMap)}${nightsTag}</div>${accomMemoHtml}`;
   })() : '';
 
   // ── 메모 (내용 있을 때만) ──
   const memoHtml = data.memo ? `<div class="memo-box">${autoLink(data.memo)}</div>` : '';
 
-  // ── To-Do ──
+  // ── To-Do (시간 있는 항목 먼저 시간순, 없는 항목은 입력 순서대로 아래) ──
   const todos = data.todos || [];
+  const sortedTodos = todos
+    .map((todo, i) => ({ ...todo, _i: i }))
+    .sort((a, b) => {
+      if (a.time && b.time) return a.time.localeCompare(b.time);
+      if (a.time) return -1;
+      if (b.time) return 1;
+      return a._i - b._i;
+    });
   const todoClass = isReadOnly ? 'class="todo-list readonly-todos"' : 'class="todo-list"';
-  const todoItems = todos.map((todo,i) => `
-    <li class="todo-item${todo.done?' done':''}" id="td-${date}-${i}">
+  const todoItems = sortedTodos.map(todo => `
+    <li class="todo-item${todo.done?' done':''}" id="td-${date}-${todo._i}">
       <input type="checkbox" ${todo.done?'checked':''} ${isReadOnly?'disabled':''}
-        onchange="toggleTodo('${tripId}','${date}',${i},this.checked)" />
+        onchange="toggleTodo('${tripId}','${date}',${todo._i},this.checked)" />
+      ${todo.time ? `<span class="todo-time">${todo.time}</span>` : ''}
       <label>${escHtml(todo.text)}</label>
     </li>`).join('');
   const addTodoRow = isReadOnly ? '' : `
     <div class="todo-add-row">
-      <input class="todo-add-inp" id="ti-${date}" placeholder="할 일 추가..."
+      <input class="todo-add-inp" id="ti-${date}" placeholder="할 일 추가... (예: 10:00 박물관 예약)"
         onkeydown="if(event.key==='Enter')addTodo('${tripId}','${date}')" />
       <button class="btn sm icon-btn" onclick="addTodo('${tripId}','${date}')">+</button>
     </div>`;
@@ -863,6 +898,7 @@ function openBulkEditModal(tripId) {
   $('bulk-edit-list').innerHTML = `
     <div class="bulk-fill-row">
       <input class="inp" id="bulk-fill-accom" placeholder="숙소 이름" style="flex:1;min-width:120px;" />
+      <input class="inp" id="bulk-fill-map" placeholder="구글맵 링크 (선택)" style="flex:1;min-width:140px;" />
       <input type="date" class="inp" id="bulk-fill-start" style="flex:0 0 132px;" value="${currentTripRef.startDate}" />
       <input type="date" class="inp" id="bulk-fill-end" style="flex:0 0 132px;" value="${currentTripRef.endDate}" />
       <button type="button" class="btn sm ghost" id="btn-bulk-fill">채우기</button>
@@ -873,7 +909,7 @@ function openBulkEditModal(tripId) {
     <div class="bulk-edit-rows">${days.map(({date, dayIndex}) => {
       const d = dayData[date] || {};
       return `
-      <div class="bulk-edit-row" data-date="${date}">
+      <div class="bulk-edit-row" data-date="${date}" data-map="${escHtml(d.accommodationMap||'')}">
         <div class="bulk-edit-daylabel">Day ${dayIndex}<span>${fmtDateShort(date)}</span></div>
         <input class="inp bulk-city"  placeholder="도시" value="${escHtml(d.city||'')}" />
         <input class="inp bulk-theme" placeholder="테마" value="${escHtml(d.theme||'')}" />
@@ -883,11 +919,15 @@ function openBulkEditModal(tripId) {
 
   $('btn-bulk-fill').onclick = () => {
     const name  = $('bulk-fill-accom').value.trim();
+    const map   = $('bulk-fill-map').value.trim();
     const start = $('bulk-fill-start').value;
     const end   = $('bulk-fill-end').value;
     if (!name || !start || !end) { showToast('숙소 이름과 날짜 범위를 입력하세요'); return; }
     document.querySelectorAll('.bulk-edit-row').forEach(row => {
-      if (row.dataset.date >= start && row.dataset.date <= end) row.querySelector('.bulk-accom').value = name;
+      if (row.dataset.date >= start && row.dataset.date <= end) {
+        row.querySelector('.bulk-accom').value = name;
+        row.dataset.map = map;
+      }
     });
   };
 
@@ -905,13 +945,14 @@ async function saveBulkEdit(tripId) {
     const city  = row.querySelector('.bulk-city').value.trim();
     const theme = row.querySelector('.bulk-theme').value.trim();
     const accom = row.querySelector('.bulk-accom').value.trim();
+    const map   = row.dataset.map || '';
     const prev  = dayData[date] || {};
-    if (prev.city === city && prev.theme === theme && prev.accommodation === accom) return;
-    dayData[date] = { ...prev, city, theme, accommodation: accom };
+    if (prev.city === city && prev.theme === theme && prev.accommodation === accom && (prev.accommodationMap||'') === map) return;
+    dayData[date] = { ...prev, city, theme, accommodation: accom, accommodationMap: map };
     saves.push((async () => {
       try {
         const ref = doc(db,'trips',tripId,'days',date);
-        try { await updateDoc(ref, {city, theme, accommodation:accom}); }
+        try { await updateDoc(ref, {city, theme, accommodation:accom, accommodationMap:map}); }
         catch { await setDoc(ref, dayData[date]); }
       } catch { /* offline */ }
     })());
@@ -992,8 +1033,9 @@ window.openEditModal = function(date, tripId) {
   $('inp-city').value       = data.city||'';
   $('inp-accom-name').value = data.accommodation||'';
   $('inp-accom-map').value  = data.accommodationMap||'';
+  $('inp-accom-memo').value = data.accommodationMemo||'';
   $('inp-memo').value       = data.memo||'';
-  $('inp-todos').value      = (data.todos||[]).map(t=>t.text).join('\n');
+  $('inp-todos').value      = (data.todos||[]).map(t => t.time ? `${t.time} ${t.text}` : t.text).join('\n');
   $('btn-save-day').onclick = () => saveDayEdit(tripId, date);
   $('modal-edit-day').classList.add('open');
 };
@@ -1002,14 +1044,16 @@ window.closeEditModal  = function() { $('modal-edit-day').classList.remove('open
 async function saveDayEdit(tripId, date) {
   const prevData = JSON.parse(localStorage.getItem(LS_DAYS(tripId))||'{}')?.[date]||{};
   const todosRaw = $('inp-todos').value.trim();
-  const todos    = todosRaw ? todosRaw.split('\n').filter(l=>l.trim()).map(text => {
-    const prev = (prevData.todos||[]).find(t=>t.text===text.trim());
-    return { text:text.trim(), done: prev?.done||false };
+  const todos    = todosRaw ? todosRaw.split('\n').filter(l=>l.trim()).map(line => {
+    const {time, text} = parseTodoInput(line);
+    const prev = (prevData.todos||[]).find(t=>t.text===text);
+    return { text, done: prev?.done||false, time };
   }) : [];
   const payload = {
     theme:$('inp-theme').value.trim(),
     city:$('inp-city').value.trim(), accommodation:$('inp-accom-name').value.trim(),
-    accommodationMap:$('inp-accom-map').value.trim(), memo:$('inp-memo').value.trim(),
+    accommodationMap:$('inp-accom-map').value.trim(), accommodationMemo:$('inp-accom-memo').value.trim(),
+    memo:$('inp-memo').value.trim(),
     todos,
   };
   closeEditModal();
@@ -1045,11 +1089,12 @@ window.toggleTodo = async function(tripId, date, idx, done) {
 };
 
 window.addTodo = async function(tripId, date) {
-  const inp=$(`ti-${date}`), text=inp?.value.trim(); if(!text) return;
+  const inp=$(`ti-${date}`), raw=inp?.value.trim(); if(!raw) return;
+  const {time, text} = parseTodoInput(raw);
   const cacheKey=LS_DAYS(tripId), dayData=JSON.parse(localStorage.getItem(cacheKey)||'{}');
   if (!dayData[date]) dayData[date]={};
   if (!dayData[date].todos) dayData[date].todos=[];
-  dayData[date].todos.push({text,done:false}); localStorage.setItem(cacheKey,JSON.stringify(dayData)); inp.value='';
+  dayData[date].todos.push({text,done:false,time}); localStorage.setItem(cacheKey,JSON.stringify(dayData)); inp.value='';
   try { const ref=doc(db,'trips',tripId,'days',date); try{await updateDoc(ref,{todos:dayData[date].todos});}catch{await setDoc(ref,dayData[date]);} } catch {}
   if (currentTripRef) {
     const transData=JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');

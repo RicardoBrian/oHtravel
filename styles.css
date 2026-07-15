@@ -481,22 +481,39 @@ select.inp {
 
 /* 숙소 */
 .accom-row { display: flex; align-items: center; gap: 8px; font-size: .92rem; flex-wrap: wrap; }
-.accom-link { color: var(--accent); text-decoration: none; font-size: .82rem; font-weight: 600; }
+.accom-link { color: var(--accent); text-decoration: none; font-weight: 600; }
 .accom-link:hover { text-decoration: underline; }
 .accom-status-badge { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill); flex-shrink: 0; }
 .accom-status-badge.checkin  { background: var(--success-light); color: var(--success); }
 .accom-status-badge.checkout { background: var(--warn-light);    color: var(--warn); }
 .accom-status-badge.single   { background: var(--accent-light);  color: var(--accent); }
+.accom-nights { font-size: .78rem; color: var(--text-3); font-weight: 600; }
 
 /* 메모 + 자동 링크 */
 .memo-box { background: var(--surface-2); border: 1px solid var(--hairline); border-radius: var(--radius-sm); padding: 10px 14px; font-size: .9rem; white-space: pre-wrap; line-height: 1.6; }
 .auto-link { color: var(--accent); text-decoration: underline; word-break: break-all; }
 .auto-link:hover { color: var(--accent-hover); }
 
+/* 메모 칩 — 내용 있을 때만 노출, 탭하면 펼쳐짐 */
+.memo-chip {
+  display: inline-flex; align-items: center; gap: 4px; margin-top: 6px;
+  background: var(--surface-2); color: var(--text-2); border: 1px solid var(--hairline);
+  border-radius: var(--radius-pill); padding: 3px 10px; font-size: .72rem; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: background .15s;
+}
+.memo-chip:hover { background: var(--glass-strong); }
+.memo-note {
+  display: none; margin-top: 6px; font-size: .85rem; color: var(--text-2);
+  background: var(--surface-2); border-radius: var(--radius-sm); padding: 8px 10px;
+  white-space: pre-wrap; line-height: 1.5;
+}
+.memo-note.open { display: block; }
+
 /* To-Do */
 .todo-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .todo-item { display: flex; align-items: center; gap: 8px; font-size: .92rem; }
 .todo-item input[type=checkbox] { width: 16px; height: 16px; border-radius: 4px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+.todo-time { font-size: .78rem; font-weight: 700; color: var(--text-3); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .todo-item.done label { text-decoration: line-through; color: var(--text-3); }
 .readonly-todos .todo-item input[type=checkbox] { opacity: .45; cursor: not-allowed; pointer-events: none; }
 .todo-add-row { display: flex; gap: 8px; margin-top: 8px; }
@@ -539,7 +556,8 @@ select.inp {
   .nav, .btn, .modal, .toast, .timeline-sidebar,
   #timeline-header-actions, .day-edit-btn, .collapse-btn,
   .trip-status-jump, .trip-status-missing, .transport-actions,
-  .todo-add-row, .btn-back, #btn-edit-trip { display: none !important; }
+  .todo-add-row, .btn-back, #btn-edit-trip, .memo-chip { display: none !important; }
+  .memo-note { display: block !important; }
 
   body {
     background: white !important;
