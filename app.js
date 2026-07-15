@@ -419,7 +419,6 @@ function renderTripList(trips) {
   empty.style.display = 'none';
   trips.forEach(trip => {
     const dd = calcDDay(trip.startDate, trip.endDate);
-    const budgetBadge = trip.budget ? `<span class="badge neutral">예산 ${fmtMoney(trip.budget)}</span>` : '';
     let currentCityBadge = '';
     if (dd.type === 'ongoing') {
       const today = todayStr();
@@ -435,12 +434,12 @@ function renderTripList(trips) {
         <div class="trip-card-dday ${dd.type}">${dd.label}</div>
       </div>
       <div class="trip-card-date">${fmtDate(trip.startDate)} ~ ${fmtDate(trip.endDate)}</div>
-      ${(budgetBadge||currentCityBadge) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;">${currentCityBadge}${budgetBadge}</div>` : ''}
+      ${currentCityBadge ? `<div style="display:flex;gap:6px;flex-wrap:wrap;">${currentCityBadge}</div>` : ''}
       <div class="trip-card-actions">
-        <button class="btn sm icon-btn btn-packing-card" data-id="${trip.id}">${ic('ic-suitcase',14)} 준비물</button>
-        <button class="btn sm icon-btn btn-dup-card" data-id="${trip.id}">${ic('ic-clipboard',14)} 복제</button>
-        <button class="btn sm icon-btn btn-share-card" data-id="${trip.id}">${ic('ic-share',14)} 공유</button>
-        <button class="btn sm danger btn-del-trip" data-id="${trip.id}">삭제</button>
+        <button class="icon-action btn-packing-card" data-id="${trip.id}" title="준비물">${ic('ic-suitcase',16)}</button>
+        <button class="icon-action btn-dup-card" data-id="${trip.id}" title="복제">${ic('ic-clipboard',16)}</button>
+        <button class="icon-action btn-share-card" data-id="${trip.id}" title="공유">${ic('ic-share',16)}</button>
+        <button class="icon-action danger btn-del-trip" data-id="${trip.id}" title="삭제">${ic('ic-trash',16)}</button>
       </div>`;
     card.addEventListener('click', e => {
       if (e.target.closest('.btn-packing-card,.btn-dup-card,.btn-share-card,.btn-del-trip')) return;
@@ -479,7 +478,6 @@ async function duplicateTrip(trip) {
       title:     (trip.title || '여행') + ' (복사)',
       startDate: trip.startDate,
       endDate:   trip.endDate,
-      budget:    trip.budget || 0,
       createdAt: serverTimestamp(),
     });
     showToast('여행 복제됨');
@@ -532,7 +530,6 @@ async function saveEditTrip(tripId) {
   const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId)) || '[]');
   const weather   = JSON.parse(localStorage.getItem(LS_WEATHER(tripId)) || '{}');
   renderTimeline(generateDays(start, end), dayData, transData, weather, tripId);
-  updateBudgetBar(currentTripRef, dayData);
 }
 
 // ══════════════════════════════════════
@@ -567,12 +564,10 @@ async function showTimelineView(tripId) {
     const actionBtnsHtml = `
       <button class="btn sm" data-action="transport">${ic('ic-plane',14)} 교통 등록</button>
       <button class="btn sm" data-action="bulk-accom">${ic('ic-bed',14)} 숙소 일괄</button>
-      <button class="btn sm" data-action="packing">${ic('ic-suitcase',14)} 준비물</button>
-      <button class="btn sm" data-action="budget">${ic('ic-wallet',14)} 예산 설정</button>
-      <button class="btn sm" data-action="stats">${ic('ic-chart',14)} 통계</button>
-      <button class="btn sm" data-action="share">${ic('ic-share',14)} 공유</button>
-      <button class="btn sm" data-action="data-io">${ic('ic-folder',14)} 내보내기</button>
-      <button class="btn sm" data-action="print">${ic('ic-printer',14)} 인쇄</button>`;
+      <button class="btn sm ghost" data-action="packing">${ic('ic-suitcase',14)} 준비물</button>
+      <button class="btn sm ghost" data-action="share">${ic('ic-share',14)} 공유</button>
+      <button class="btn sm ghost" data-action="data-io">${ic('ic-folder',14)} 내보내기</button>
+      <button class="btn sm ghost" data-action="print">${ic('ic-printer',14)} 인쇄</button>`;
 
     $('timeline-header-actions').innerHTML = actionBtnsHtml;
     $('timeline-sidebar').innerHTML = actionBtnsHtml;
@@ -585,8 +580,6 @@ async function showTimelineView(tripId) {
         if      (a==='transport')  openTransportModal(null, tripId);
         else if (a==='bulk-accom') openBulkAccomModal(tripId);
         else if (a==='packing')    openPackingModal(tripId);
-        else if (a==='budget')     openBudgetModal(tripId);
-        else if (a==='stats')      openStatsModal(tripId);
         else if (a==='share') {
           const url = `${location.origin}${location.pathname}?tripId=${tripId}&view=share`;
           navigator.clipboard.writeText(url).then(() => showToast('공유 링크 복사됨'));
@@ -605,7 +598,6 @@ async function showTimelineView(tripId) {
     const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId)) || '[]');
     const weather   = JSON.parse(localStorage.getItem(LS_WEATHER(tripId)) || '{}');
     renderTimeline(days, dayData, transData, weather, tripId);
-    updateBudgetBar(trip, dayData);
   } else {
     listenTimeline(tripId, days, trip);
   }
@@ -617,7 +609,7 @@ function listenTimeline(tripId, days, trip) {
   $('timeline-list').innerHTML = days.slice(0,3).map(()=>`<div class="skeleton" style="height:130px;margin-bottom:16px;"></div>`).join('');
   let dayData = {}, transData = [];
   const weather = JSON.parse(localStorage.getItem(LS_WEATHER(tripId)) || '{}');
-  const redraw = () => { renderTimeline(days, dayData, transData, weather, tripId); updateBudgetBar(trip, dayData); };
+  const redraw = () => { renderTimeline(days, dayData, transData, weather, tripId); };
 
   unsubDays = onSnapshot(collection(db,'trips',tripId,'days'), snap => {
     dayData = {}; snap.forEach(d => { dayData[d.id] = d.data(); });
@@ -645,24 +637,6 @@ function redrawTimeline(tripId) {
   const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId)) || '[]');
   const weather   = JSON.parse(localStorage.getItem(LS_WEATHER(tripId)) || '{}');
   renderTimeline(generateDays(currentTripRef.startDate, currentTripRef.endDate), dayData, transData, weather, tripId);
-  updateBudgetBar(currentTripRef, dayData);
-}
-
-// ── 예산 바 ──
-function updateBudgetBar(trip, dayData) {
-  const budget = trip?.budget || 0;
-  const spent  = calcTotalSpentKRW(dayData);
-  if (!budget) { $('budget-bar-wrap').style.display = 'none'; return; }
-  $('budget-bar-wrap').style.display = '';
-  const pct = Math.min(Math.round(spent/budget*100), 100);
-  $('budget-label-spent').textContent = `지출 ${fmtMoney(spent)}`;
-  $('budget-label-total').textContent = `예산 ${fmtMoney(budget)}`;
-  const fill = $('budget-bar-fill'); fill.style.width = pct+'%'; fill.classList.toggle('over', spent > budget);
-}
-
-function calcTotalSpentKRW(dayData) {
-  return Object.values(dayData).reduce((sum, d) =>
-    sum + (d.expenses||[]).reduce((s,e) => s + toKRW(e.amount, e.currency), 0), 0);
 }
 
 // ══════════════════════════════════════
@@ -795,7 +769,7 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
   const missingBadge = hasMissingAccom && !isReadOnly
     ? `<span class="missing-accom-badge">숙소 미입력</span>` : '';
   const editBtn = isReadOnly ? '' : `<button class="icon-action day-edit-btn" title="편집" onclick="openEditModal('${date}','${tripId}')"><svg class="ic" width="16" height="16"><use href="#ic-edit"/></svg></button>`;
-  const collapseIcon = isCollapsed ? '▼' : '▲';
+  const collapseIcon = ic('ic-chevron', 14);
 
   // ── 교통 (내용 있을 때만) ──
   const transHtml = dayTrans.length ? dayTrans.map(t => {
@@ -893,7 +867,7 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
       </div>
       <div class="day-header-actions" onclick="event.stopPropagation()">
         ${editBtn}
-        <button class="btn sm icon-btn collapse-btn" onclick="toggleDayCollapse('${date}',event)">${collapseIcon}</button>
+        <button class="icon-action sm collapse-btn" title="${isCollapsed?'펼치기':'접기'}" onclick="toggleDayCollapse('${date}',event)">${collapseIcon}</button>
       </div>
     </div>
     <div class="day-card-summary">${summaryParts.join(' · ') || '내용 없음'}</div>
@@ -1060,89 +1034,7 @@ async function saveBulkAccom(tripId) {
     const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
     const weather   = JSON.parse(localStorage.getItem(LS_WEATHER(tripId))||'{}');
     renderTimeline(generateDays(currentTripRef.startDate, currentTripRef.endDate), dayData, transData, weather, tripId);
-    updateBudgetBar(currentTripRef, dayData);
   }
-}
-
-// ══════════════════════════════════════
-//  예산
-// ══════════════════════════════════════
-function openBudgetModal(tripId) {
-  $('inp-budget').value = currentTripRef?.budget || '';
-  $('btn-save-budget').onclick = () => saveBudget(tripId);
-  $('modal-budget').classList.add('open');
-}
-async function saveBudget(tripId) {
-  const budget = Number($('inp-budget').value);
-  if (!budget||budget<0) { showToast('올바른 금액을 입력하세요'); return; }
-  $('modal-budget').classList.remove('open');
-  currentTripRef = {...currentTripRef, budget};
-  const raw = localStorage.getItem(LS_TRIPS);
-  if (raw) { const trips=JSON.parse(raw).map(t=>t.id===tripId?{...t,budget}:t); localStorage.setItem(LS_TRIPS,JSON.stringify(trips)); }
-  try { await updateDoc(doc(db,'trips',tripId),{budget}); showToast(`예산 ${fmtMoney(budget)} 저장됨`); }
-  catch { showToast('오프라인 — 로컬 저장됨'); }
-  updateBudgetBar(currentTripRef, JSON.parse(localStorage.getItem(LS_DAYS(tripId))||'{}'));
-}
-
-// ══════════════════════════════════════
-//  여행 통계
-// ══════════════════════════════════════
-function openStatsModal(tripId) {
-  const dayData = JSON.parse(localStorage.getItem(LS_DAYS(tripId))||'{}');
-  const days    = generateDays(currentTripRef.startDate, currentTripRef.endDate);
-  const today   = todayStr();
-
-  const elapsed   = days.filter(d => d.date <= today).length;
-  const remaining = days.filter(d => d.date > today).length;
-  const cities    = [...new Set(Object.values(dayData).map(d=>d.city).filter(Boolean))];
-  const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
-  const catTotals = {};
-  let   totalKRW  = 0;
-
-  Object.values(dayData).forEach(d => {
-    (d.expenses||[]).forEach(e => {
-      const krw = toKRW(e.amount, e.currency);
-      totalKRW += krw;
-      catTotals[e.category] = (catTotals[e.category]||0) + krw;
-    });
-  });
-
-  const avgDaily    = elapsed > 0 ? Math.round(totalKRW/elapsed) : 0;
-  const budget      = currentTripRef?.budget || 0;
-  const missingAccom = days.filter(d => d.date >= today && !dayData[d.date]?.accommodation).length;
-
-  // 카테고리별 상위 3개만 간단히
-  const topCats = EXP_KEYS.filter(k => catTotals[k])
-    .sort((a,b) => catTotals[b]-catTotals[a]).slice(0,3)
-    .map(k => `<span class="badge neutral" style="font-size:.78rem;">${ic(EXP_ICONS[k]||'ic-box',12)} ${EXP_LABELS[k]} ${fmtMoney(catTotals[k])}</span>`).join('');
-
-  $('stats-content').innerHTML = `
-    <div class="stat-grid">
-      <div class="stat-box"><div class="num">${days.length}</div><div class="lbl">총 여행 일수</div></div>
-      <div class="stat-box"><div class="num">${elapsed}</div><div class="lbl">경과 일수</div></div>
-      <div class="stat-box"><div class="num">${remaining}</div><div class="lbl">남은 일수</div></div>
-      <div class="stat-box"><div class="num">${cities.length}</div><div class="lbl">방문 도시</div></div>
-      <div class="stat-box"><div class="num">${transData.length}</div><div class="lbl">교통편</div></div>
-    </div>
-    ${missingAccom ? `<div style="background:var(--danger-light);color:var(--danger);border-radius:var(--radius-sm);padding:10px 14px;font-size:.88rem;font-weight:600;margin-bottom:16px;">${ic('ic-warning',14)} 숙소 미정 ${missingAccom}일 남음</div>` : ''}
-    ${cities.length ? `<div style="margin-bottom:16px;"><div class="day-section-label" style="margin-bottom:8px;">방문 도시</div><div style="display:flex;flex-wrap:wrap;gap:6px;">${cities.map(c=>`<span class="city-tag">${escHtml(c)}</span>`).join('')}</div></div>` : ''}
-    <div style="margin-bottom:16px;">
-      <div class="day-section-label" style="margin-bottom:10px;">지출 현황</div>
-      <div class="stat-grid" style="margin-bottom:12px;">
-        <div class="stat-box"><div class="num" style="font-size:1.2rem;">${fmtMoney(totalKRW)}</div><div class="lbl">총 지출</div></div>
-        <div class="stat-box"><div class="num" style="font-size:1.2rem;">${fmtMoney(avgDaily)}</div><div class="lbl">일평균 지출</div></div>
-      </div>
-      ${budget ? `<div class="stat-box" style="margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;font-size:.85rem;font-weight:600;margin-bottom:6px;">
-          <span>예산 대비</span>
-          <span style="color:${totalKRW>budget?'var(--danger)':'var(--success)'};">${Math.round(totalKRW/budget*100)}%</span>
-        </div>
-        <div class="budget-bar-track"><div class="budget-bar-fill ${totalKRW>budget?'over':''}" style="width:${Math.min(Math.round(totalKRW/budget*100),100)}%"></div></div>
-        <div style="font-size:.78rem;color:var(--text-2);margin-top:6px;">잔여 ${fmtMoney(Math.max(budget-totalKRW,0))}</div>
-      </div>` : ''}
-      ${topCats ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">${topCats}</div>` : ''}
-    </div>`;
-  $('modal-stats').classList.add('open');
 }
 
 // ══════════════════════════════════════
@@ -1163,7 +1055,7 @@ function renderPackingList(tripId) {
         <input type="checkbox" ${item.done?'checked':''} onchange="togglePacking('${tripId}',${idx},this.checked)" />
         <label>${escHtml(item.text)}</label>
       </div>
-      <button class="btn sm danger" style="padding:3px 8px;font-size:.72rem;" onclick="deletePacking('${tripId}',${idx})">×</button>
+      <button class="icon-action sm danger" title="삭제" onclick="deletePacking('${tripId}',${idx})">${ic('ic-close',14)}</button>
     </li>`).join('');
   $('packing-progress').textContent = `${done} / ${items.length} 완료`;
 }
@@ -1223,7 +1115,7 @@ function renderEditExpenses() {
       <span class="exp-cat">${ic(EXP_ICONS[e.category]||'ic-box',13)} ${EXP_LABELS[e.category]||e.category}</span>
       <span class="exp-name">${escHtml(e.name)}</span>
       <span class="exp-amt">${e.currency&&e.currency!=='KRW'?`${CURRENCIES[e.currency]?.s||''}${Number(e.amount).toLocaleString()}`:fmtMoney(e.amount)}</span>
-      <button class="btn sm danger" style="padding:3px 8px;font-size:.72rem;margin-left:auto;" onclick="removeEditExpense(${i})">×</button>
+      <button class="icon-action sm danger" style="margin-left:auto;" title="삭제" onclick="removeEditExpense(${i})">${ic('ic-close',14)}</button>
     </div>`).join('') || `<div class="t-cap" style="margin-bottom:6px;">없음</div>`;
 }
 window.removeEditExpense = function(idx) { editingExpenses.splice(idx,1); renderEditExpenses(); };
@@ -1263,7 +1155,6 @@ async function saveDayEdit(tripId, date) {
     const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
     const weather   = JSON.parse(localStorage.getItem(LS_WEATHER(tripId))||'{}');
     renderTimeline(generateDays(currentTripRef.startDate, currentTripRef.endDate), dayData, transData, weather, tripId);
-    updateBudgetBar(currentTripRef, dayData);
     fetchWeatherForTrip(currentTripRef, dayData, tripId).then(w => {
       Object.assign(weather, w); localStorage.setItem(LS_WEATHER(tripId), JSON.stringify(weather));
       renderTimeline(generateDays(currentTripRef.startDate, currentTripRef.endDate), dayData, transData, weather, tripId);
@@ -1511,7 +1402,6 @@ async function importExpensesCSV(tripId, text) {
       const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
       const weather   = JSON.parse(localStorage.getItem(LS_WEATHER(tripId))||'{}');
       renderTimeline(generateDays(currentTripRef.startDate,currentTripRef.endDate),dayData,transData,weather,tripId);
-      updateBudgetBar(currentTripRef, dayData);
     }
     showToast(`${count}일 지출 가져오기 완료`);
   } catch(err) { showToast('가져오기 실패: ' + err.message); }

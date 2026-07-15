@@ -328,12 +328,6 @@ select.inp {
 .timeline-header { display: flex; flex-direction: column; gap: 10px; }
 .timeline-header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
-.budget-bar-wrap { }
-.budget-bar-labels { display: flex; justify-content: space-between; font-size: .82rem; font-weight: 600; margin-bottom: 6px; color: var(--text-2); }
-.budget-bar-track { height: 6px; background: var(--surface-2); border-radius: var(--radius-pill); overflow: hidden; }
-.budget-bar-fill  { height: 100%; background: var(--accent-grad); border-radius: var(--radius-pill); transition: width .6s var(--ease); }
-.budget-bar-fill.over { background: linear-gradient(90deg, var(--danger), #ff6b63); }
-
 /* ── 숙소 미정 요약 ── */
 .missing-accom-banner {
   background: var(--danger-light); color: var(--danger);
@@ -489,9 +483,9 @@ select.inp {
 .accom-link { color: var(--accent); text-decoration: none; font-size: .82rem; font-weight: 600; }
 .accom-link:hover { text-decoration: underline; }
 .accom-status-badge { font-size: .72rem; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill); flex-shrink: 0; }
-.accom-status-badge.checkin  { background: rgba(52,199,89,.15); color: #1a9e3f; }
-.accom-status-badge.checkout { background: rgba(255,149,0,.15);  color: #c07000; }
-.accom-status-badge.single   { background: rgba(0,113,227,.13);  color: #0071e3; }
+.accom-status-badge.checkin  { background: var(--success-light); color: var(--success); }
+.accom-status-badge.checkout { background: var(--warn-light);    color: var(--warn); }
+.accom-status-badge.single   { background: var(--accent-light);  color: var(--accent); }
 
 /* 지출 */
 .expense-list { display: flex; flex-direction: column; gap: 5px; }
@@ -526,23 +520,6 @@ select.inp {
 /* 준비물 */
 .packing-templates { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
-/* ══ 통계 모달 내부 ══ */
-.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
-.stat-box { background: var(--surface-2); border-radius: var(--radius-sm); padding: 14px 16px; }
-.stat-box .num { font-size: 1.6rem; font-weight: 800; letter-spacing: -.03em; line-height: 1; color: var(--text); }
-
-/* 히어로 숫자 — "지금 가장 중요한 값 하나"는 큰 숫자로 승격 */
-.hero-stat { text-align: center; padding: 10px 0 22px; }
-.hero-stat .cap { font-size: .78rem; font-weight: 600; color: var(--text-2); letter-spacing: .02em; }
-.hero-stat .num { font-size: 2.3rem; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.15; margin-top: 2px; }
-.hero-stat .sub { font-size: .8rem; color: var(--text-2); margin-top: 4px; }
-.stat-box .lbl { font-size: .75rem; color: var(--text-2); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-top: 4px; }
-.cat-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: .85rem; }
-.cat-bar-label { width: 72px; flex-shrink: 0; }
-.cat-bar-track { flex: 1; height: 6px; background: var(--surface-2); border-radius: var(--radius-pill); overflow: hidden; }
-.cat-bar-fill  { height: 100%; background: var(--accent-grad); border-radius: var(--radius-pill); }
-.cat-bar-amt   { width: 80px; text-align: right; flex-shrink: 0; font-weight: 600; color: var(--text-2); }
-
 /* ══ 반응형 ══ */
 @media (max-width: 600px) {
   .t-large { font-size: 1.7rem; }
@@ -552,7 +529,6 @@ select.inp {
   .day-card { padding: 16px; }
   .form-row-2 { grid-template-columns: 1fr; }
   .expense-add-row { flex-direction: column; }
-  .stat-grid { grid-template-columns: 1fr; }
   .timeline-list { padding-left: 24px; }
   .timeline-dot { left: -20px; }
   .timeline-dot.today-dot { left: -21px; }
@@ -600,7 +576,7 @@ select.inp {
   }
   .timeline-list::before { display: none; }
   .day-row { margin-bottom: 12px; }
-  .transport-item, .expense-row, .stat-box { background: #f5f5f5 !important; }
+  .transport-item, .expense-row { background: #f5f5f5 !important; }
   .trip-title-display { font-size: 18pt; }
 }
 
