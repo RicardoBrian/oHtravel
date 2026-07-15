@@ -172,16 +172,6 @@ function localDateStr(d) {
 function todayStr() { return localDateStr(new Date()); }
 function isToday(d) { return d === todayStr(); }
 function isPast(d)  { return d < todayStr(); }
-function calcTransDuration(departDate, departTime, arriveDate, arriveTime) {
-  if (!departDate || !arriveDate || !departTime || !arriveTime) return '';
-  const dep = new Date(`${departDate}T${departTime}:00`);
-  const arr = new Date(`${arriveDate}T${arriveTime}:00`);
-  const diff = arr - dep;
-  if (diff <= 0) return '';
-  const h = Math.floor(diff / 3600000);
-  const m = Math.round((diff % 3600000) / 60000);
-  return h > 0 ? (m > 0 ? `${h}시간 ${m}분` : `${h}시간`) : `${m}분`;
-}
 function genId()    { return Math.random().toString(36).slice(2,10); }
 
 function calcDDay(s, e) {
@@ -686,16 +676,15 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
   const transportEntries = dayTrans.map(t => {
     const isDepart = t.departDate===date, isArrive = t.arriveDate===date;
     const badge = (!isDepart&&!isArrive) ? '<span class="transit-day-badge">이동 중</span>' : '';
-    const duration = calcTransDuration(t.departDate, t.departTime, t.arriveDate, t.arriveTime);
     const timeStr = [
       isDepart&&t.departTime?`출발 ${t.departTime}`:'',
       isArrive&&t.arriveTime?`도착 ${t.arriveTime}`:''
     ].filter(Boolean).join(' → ');
-    const durationStr = duration ? ` <span class="trans-duration">${duration}</span>` : '';
     // 개별 수정/삭제 아이콘 대신 "Day 수정" 모달에서 그날 교통편을 관리
+    // 소요시간은 표시 안 함 — 도시 간 시간대 정보가 없어 국경/시간대 이동 구간에서 값이 틀어질 수 있음
     const html = `<div class="transport-item">
       <div class="transport-route">${ic(TRANS_ICONS[t.type]||'ic-car',15)} <b>${escHtml(t.fromCity||'?')}</b><span class="arrow">→</span><b>${escHtml(t.toCity||'?')}</b>${badge}</div>
-      ${timeStr?`<div class="transport-meta">${ic('ic-clock',13)} ${timeStr}${durationStr}</div>`:''}
+      ${timeStr?`<div class="transport-meta">${ic('ic-clock',13)} ${timeStr}</div>`:''}
       ${t.bookingNo?`<div class="transport-booking">${ic('ic-clipboard',13)} ${escHtml(t.bookingNo)}</div>`:''}
       ${memoChip(t.memo)}
     </div>`;

@@ -474,7 +474,6 @@ select.inp {
 .transport-route .arrow { color: var(--text-3); }
 .transport-meta   { font-size: .82rem; color: var(--text-2); margin-top: 4px; }
 .transport-booking{ font-size: .8rem;  color: var(--text-3); margin-top: 2px; }
-.trans-duration { font-size: .78rem; color: var(--accent); font-weight: 700; margin-left: 6px; }
 .transit-day-badge { font-size: .72rem; font-weight: 700; padding: 2px 8px; background: var(--warn-light); color: var(--warn); border-radius: var(--radius-pill); }
 
 /* Day 수정 모달 안의 교통편 목록 — 탭하면 해당 교통 편집으로 이동 */
