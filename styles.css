@@ -74,6 +74,11 @@ body {
 .t-head  { font-size: 1.15rem; font-weight: 700; letter-spacing: -.015em; }
 .t-cap   { font-size: .85rem; color: var(--text-2); }
 
+/* ── 라인 아이콘 (SVG 스프라이트 use) ── */
+.ic { flex-shrink: 0; vertical-align: -3px; }
+.ic-lg { width: 20px; height: 20px; }
+.ic-inline { display: inline-flex; align-items: center; gap: 6px; }
+
 /* ── 입장 코드 화면 ── */
 .screen-entry {
   position: fixed; inset: 0; z-index: 99999;
@@ -153,13 +158,29 @@ body.dark .dark-toggle::after { transform: translateX(18px); }
 .btn:hover { background: var(--glass-strong); }
 .btn:active { transform: scale(.97); }
 .btn:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2px; }
-.btn.accent { background: var(--accent-grad); color: #fff; border-color: transparent; box-shadow: var(--highlight), 0 6px 18px rgba(0,113,227,.35); }
-.btn.accent:hover { filter: brightness(1.05); }
+/* 주요 CTA: 중립 다크 필 — accent(파랑)는 상태 표시 전용이라 여기 쓰지 않는다 */
+.btn.accent { background: #1d1d1f; color: #fff; border-color: transparent; box-shadow: inset 0 1px 0 rgba(255,255,255,.08), var(--shadow-md); }
+.btn.accent:hover { opacity: .88; }
+body.dark .btn.accent { background: #f5f5f7; color: #1d1d1f; }
 .btn.ghost { background: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .btn.ghost:hover { background: var(--accent-light); color: var(--accent); }
 .btn.danger { color: var(--danger); background: var(--danger-light); border-color: transparent; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .btn.sm { padding: 7px 14px; font-size: .82rem; }
 .btn.icon-btn { padding: 7px 10px; font-size: .8rem; background: var(--surface-2); border-color: var(--hairline); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.btn .ic { flex-shrink: 0; }
+
+/* ── 아이콘 전용 버튼: 반복/자명 액션 (수정/삭제/새로고침 등) ──
+   텍스트 없이 아이콘만. 삭제류만 항상 빨강, 나머지는 회색 → hover 시 진하게. */
+.icon-action {
+  width: 32px; height: 32px; border-radius: 50%; border: none; background: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; color: var(--text-3); flex-shrink: 0;
+  transition: background .15s, color .15s;
+}
+.icon-action:hover { background: var(--glass); color: var(--text); }
+.icon-action:active { transform: scale(.94); }
+.icon-action.danger { color: var(--danger); }
+.icon-action.danger:hover { background: var(--danger-light); color: var(--danger); }
+.icon-action.sm { width: 28px; height: 28px; }
 
 /* ── 폼 ── */
 .field { margin-bottom: 14px; }
@@ -203,7 +224,7 @@ select.inp {
   box-shadow: var(--highlight), var(--shadow-md);
 }
 
-/* 모달 탭 */
+/* 모달 탭 (세그먼트 — 선택 상태에만 색상 허용) */
 .modal-tabs { display: flex; gap: 2px; margin-bottom: 16px; border-bottom: 1px solid var(--hairline); }
 .modal-tab {
   background: none; border: none; cursor: pointer;
@@ -212,28 +233,16 @@ select.inp {
   border-bottom: 2px solid transparent; margin-bottom: -1px;
   transition: color var(--dur), border-color var(--dur);
 }
-.modal-tab:hover { color: var(--text-1); }
+.modal-tab:hover { color: var(--text); }
 .modal-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
 /* 데이터 IO 모달 버튼 */
 #modal-data-io .btn { display: flex; align-items: center; width: 100%; text-align: left; padding: 12px 14px; gap: 12px; }
-#modal-data-io .btn > span:first-child { font-size: 1.3rem; flex-shrink: 0; }
-
-/* 모달 탭 */
-.modal-tabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--hairline); padding-bottom: 0; }
-.modal-tab {
-  background: none; border: none; cursor: pointer;
-  font-size: .88rem; font-weight: 600; color: var(--text-3);
-  padding: 8px 14px; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  border-bottom: 2px solid transparent; margin-bottom: -1px;
-  transition: color var(--dur), border-color var(--dur);
+#modal-data-io .btn .ic-tile {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-2); color: var(--text-2);
 }
-.modal-tab:hover { color: var(--text-1); }
-.modal-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-/* 데이터 IO 모달 버튼 */
-#modal-data-io .btn { display: flex; align-items: center; width: 100%; text-align: left; padding: 12px 14px; }
-#modal-data-io .btn span { font-size: 1.4rem; flex-shrink: 0; }
 
 /* ── 토스트 ── */
 .toast {
@@ -260,7 +269,7 @@ select.inp {
 .readonly-banner { display: inline-flex; align-items: center; gap: 8px; background: var(--accent-light); border: 1px solid var(--accent); border-radius: var(--radius-sm); padding: 8px 14px; font-size: .85rem; font-weight: 600; color: var(--accent); }
 
 .empty-state { text-align: center; padding: 60px 20px; color: var(--text-2); }
-.empty-icon  { font-size: 3rem; margin-bottom: 12px; }
+.empty-icon  { width: 48px; height: 48px; margin: 0 auto 14px; color: var(--text-3); }
 .skeleton { background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: var(--radius-sm); }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
@@ -491,13 +500,13 @@ select.inp {
 .expense-name { flex: 1; }
 .expense-amount { font-weight: 700; color: var(--accent); flex-shrink: 0; text-align: right; }
 .expense-krw  { font-size: .75rem; color: var(--text-3); }
-.expense-total { margin-top: 6px; text-align: right; font-size: .85rem; font-weight: 700; color: var(--accent); }
+.expense-total { margin-top: 6px; text-align: right; font-size: .85rem; font-weight: 700; color: var(--text); }
 
 .expense-add-row { display: flex; gap: 6px; align-items: stretch; flex-wrap: wrap; }
 .expense-item-edit { display: flex; align-items: center; gap: 8px; background: var(--surface-2); border-radius: var(--radius-sm); padding: 7px 10px; margin-bottom: 6px; font-size: .88rem; }
-.expense-item-edit .exp-cat  { flex-shrink: 0; font-size: .8rem; }
+.expense-item-edit .exp-cat  { flex-shrink: 0; font-size: .8rem; display: inline-flex; align-items: center; gap: 4px; color: var(--text-2); }
 .expense-item-edit .exp-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.expense-item-edit .exp-amt  { font-weight: 700; color: var(--accent); flex-shrink: 0; }
+.expense-item-edit .exp-amt  { font-weight: 700; color: var(--text); flex-shrink: 0; }
 
 /* 메모 + 자동 링크 */
 .memo-box { background: var(--surface-2); border: 1px solid var(--hairline); border-radius: var(--radius-sm); padding: 10px 14px; font-size: .9rem; white-space: pre-wrap; line-height: 1.6; }
@@ -520,7 +529,13 @@ select.inp {
 /* ══ 통계 모달 내부 ══ */
 .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
 .stat-box { background: var(--surface-2); border-radius: var(--radius-sm); padding: 14px 16px; }
-.stat-box .num { font-size: 1.6rem; font-weight: 800; letter-spacing: -.03em; line-height: 1; color: var(--accent); }
+.stat-box .num { font-size: 1.6rem; font-weight: 800; letter-spacing: -.03em; line-height: 1; color: var(--text); }
+
+/* 히어로 숫자 — "지금 가장 중요한 값 하나"는 큰 숫자로 승격 */
+.hero-stat { text-align: center; padding: 10px 0 22px; }
+.hero-stat .cap { font-size: .78rem; font-weight: 600; color: var(--text-2); letter-spacing: .02em; }
+.hero-stat .num { font-size: 2.3rem; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.15; margin-top: 2px; }
+.hero-stat .sub { font-size: .8rem; color: var(--text-2); margin-top: 4px; }
 .stat-box .lbl { font-size: .75rem; color: var(--text-2); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-top: 4px; }
 .cat-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: .85rem; }
 .cat-bar-label { width: 72px; flex-shrink: 0; }
