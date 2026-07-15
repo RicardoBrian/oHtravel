@@ -692,15 +692,12 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
       isArrive&&t.arriveTime?`도착 ${t.arriveTime}`:''
     ].filter(Boolean).join(' → ');
     const durationStr = duration ? ` <span class="trans-duration">${duration}</span>` : '';
-    const actBtns = isReadOnly ? '' :
-      `<button class="icon-action sm" title="편집" onclick="openTransportModal('${t.id}','${tripId}')">${ic('ic-edit',14)}</button>
-       <button class="icon-action sm danger" title="삭제" onclick="deleteTransport('${t.id}','${tripId}')">${ic('ic-trash',14)}</button>`;
+    // 개별 수정/삭제 아이콘 대신 "Day 수정" 모달에서 그날 교통편을 관리
     const html = `<div class="transport-item">
       <div class="transport-route">${ic(TRANS_ICONS[t.type]||'ic-car',15)} <b>${escHtml(t.fromCity||'?')}</b><span class="arrow">→</span><b>${escHtml(t.toCity||'?')}</b>${badge}</div>
       ${timeStr?`<div class="transport-meta">${ic('ic-clock',13)} ${timeStr}${durationStr}</div>`:''}
       ${t.bookingNo?`<div class="transport-booking">${ic('ic-clipboard',13)} ${escHtml(t.bookingNo)}</div>`:''}
       ${memoChip(t.memo)}
-      ${actBtns?`<div class="transport-actions">${actBtns}</div>`:''}
     </div>`;
     return { key: transTimeKey(t), html };
   });
@@ -842,9 +839,12 @@ async function fetchWeatherForTrip(trip, dayData, tripId) {
 // ══════════════════════════════════════
 //  교통 모달
 // ══════════════════════════════════════
-window.openTransportModal = function(transId, tripId) {
+window.openTransportModal = function(transId, tripId, prefillDate) {
   editingTransId = transId;
   $('modal-transport-title').textContent = transId ? '교통 편집' : '교통 등록';
+  const delBtn = $('btn-delete-transport');
+  delBtn.style.display = transId ? '' : 'none';
+  delBtn.onclick = () => { deleteTransport(transId, tripId); closeTransportModal(); };
   if (transId) {
     const t = (JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]')).find(x=>x.id===transId)||{};
     $('inp-trans-type').value        = t.type||'flight';
@@ -859,7 +859,8 @@ window.openTransportModal = function(transId, tripId) {
   } else {
     ['inp-trans-from-city','inp-trans-to-city','inp-trans-depart-time','inp-trans-arrive-time','inp-trans-booking','inp-trans-memo'].forEach(id => $(id).value='');
     $('inp-trans-type').value='flight';
-    if (currentTripRef) { $('inp-trans-depart-date').value=$('inp-trans-arrive-date').value=currentTripRef.startDate; }
+    const d = prefillDate || currentTripRef?.startDate || '';
+    $('inp-trans-depart-date').value = $('inp-trans-arrive-date').value = d;
   }
   $('btn-save-transport').onclick = () => saveTransport(tripId);
   $('modal-transport').classList.add('open');
@@ -1057,6 +1058,23 @@ window.openEditModal = function(date, tripId) {
   $('inp-accom-memo').value = data.accommodationMemo||'';
   $('inp-memo').value       = data.memo||'';
   $('inp-todos').value      = (data.todos||[]).map(t => t.time ? `${t.time} ${t.text}` : t.text).join('\n');
+
+  // 그날의 교통편 — 탭하면 해당 편집으로 이동 (개별 카드에서 없앤 수정 진입점을 여기로 통합)
+  const dayTrans = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]')
+    .filter(t => t.departDate <= date && t.arriveDate >= date)
+    .sort((a,b) => ((a.departDate||'')+(a.departTime||'')).localeCompare((b.departDate||'')+(b.departTime||'')));
+  $('edit-day-transport-list').innerHTML = dayTrans.length ? dayTrans.map(t => {
+    const timeStr = [
+      t.departDate===date&&t.departTime?`출발 ${t.departTime}`:'',
+      t.arriveDate===date&&t.arriveTime?`도착 ${t.arriveTime}`:''
+    ].filter(Boolean).join(' → ');
+    return `<button type="button" class="edit-day-trans-row" onclick="closeEditModal();openTransportModal('${t.id}','${tripId}')">
+      <span>${ic(TRANS_ICONS[t.type]||'ic-car',14)} ${escHtml(t.fromCity||'?')} → ${escHtml(t.toCity||'?')}</span>
+      ${timeStr?`<span class="edit-day-trans-time">${timeStr}</span>`:''}
+    </button>`;
+  }).join('') : `<div class="t-cap" style="text-transform:none;letter-spacing:normal;margin-top:2px;">등록된 교통편 없음</div>`;
+  $('btn-add-trans-inline').onclick = () => { closeEditModal(); openTransportModal(null, tripId, date); };
+
   $('btn-save-day').onclick = () => saveDayEdit(tripId, date);
   $('modal-edit-day').classList.add('open');
 };

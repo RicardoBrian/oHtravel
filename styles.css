@@ -475,15 +475,18 @@ select.inp {
 .transport-meta   { font-size: .82rem; color: var(--text-2); margin-top: 4px; }
 .transport-booking{ font-size: .8rem;  color: var(--text-3); margin-top: 2px; }
 .trans-duration { font-size: .78rem; color: var(--accent); font-weight: 700; margin-left: 6px; }
-.transport-actions {
-  display: flex; gap: 6px; margin-top: 8px;
-  transition: opacity var(--dur) var(--ease);
-}
-@media (hover: hover) {
-  .transport-actions { opacity: 0; }
-  .transport-item:hover .transport-actions { opacity: 1; }
-}
 .transit-day-badge { font-size: .72rem; font-weight: 700; padding: 2px 8px; background: var(--warn-light); color: var(--warn); border-radius: var(--radius-pill); }
+
+/* Day 수정 모달 안의 교통편 목록 — 탭하면 해당 교통 편집으로 이동 */
+.edit-day-transport-list { display: flex; flex-direction: column; gap: 6px; }
+.edit-day-trans-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; text-align: left; font-family: inherit; font-size: .88rem; font-weight: 600;
+  background: var(--surface-2); border: 1px solid var(--hairline); border-radius: var(--radius-sm);
+  padding: 10px 12px; color: var(--text); cursor: pointer; transition: background .15s;
+}
+.edit-day-trans-row:hover { background: var(--glass-strong); }
+.edit-day-trans-time { font-size: .78rem; font-weight: 600; color: var(--text-3); flex-shrink: 0; }
 
 /* 숙소 */
 .accom-card {
@@ -575,7 +578,7 @@ select.inp {
 @media print {
   .nav, .btn, .modal, .toast, .timeline-sidebar,
   #timeline-header-actions, .day-edit-btn, .collapse-btn,
-  .trip-status-jump, .trip-status-missing, .transport-actions,
+  .trip-status-jump, .trip-status-missing,
   .todo-add-row, .btn-back, #btn-edit-trip, .memo-chip { display: none !important; }
   .memo-note { display: block !important; }
 
