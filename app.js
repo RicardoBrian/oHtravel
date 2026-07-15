@@ -62,7 +62,6 @@ const LS_CONFIG  = 'ohtravel_config';
 //  상태
 // ══════════════════════════════════════
 let isAuthed       = sessionStorage.getItem('ohtravel_authed') === '1';
-let isAdminMode    = false;
 let currentTripId  = null;
 let isReadOnly     = false;
 let isOnline       = navigator.onLine;
@@ -227,16 +226,13 @@ async function getAccessConfig() {
   try {
     const snap = await getDoc(doc(db, 'config', 'access'));
     const cfg = snap.exists() ? snap.data() : {};
-    const result = {
-      entryCode:     cfg.entryCode     || '961002',
-      adminPassword: cfg.adminPassword || 'qjatjrdl1',
-    };
+    const result = { entryCode: cfg.entryCode || '961002' };
     localStorage.setItem(LS_CONFIG, JSON.stringify(result));
     return result;
   } catch {
     const cached = localStorage.getItem(LS_CONFIG);
     if (cached) return JSON.parse(cached);
-    return { entryCode: '961002', adminPassword: 'qjatjrdl1' };
+    return { entryCode: '961002' };
   }
 }
 
@@ -264,44 +260,22 @@ async function handleEntrySubmit() {
   }
 }
 
-// ── 관리자 인증 ──
-function openAdminAuth() {
-  $('inp-admin-password').value = '';
-  $('admin-auth-error').style.display = 'none';
-  $('modal-admin-auth').classList.add('open');
-  setTimeout(() => $('inp-admin-password').focus(), 100);
+// ── 설정 (입장 코드 변경) ──
+function openSettings() {
+  $('inp-new-entry-code').value = '';
+  $('modal-settings').classList.add('open');
 }
 
-async function verifyAdmin() {
-  const pw = $('inp-admin-password').value.trim();
-  const cfg = await getAccessConfig();
-  if (pw === cfg.adminPassword) {
-    $('modal-admin-auth').classList.remove('open');
-    isAdminMode = true;
-    $('inp-new-entry-code').value   = '';
-    $('inp-new-admin-pw').value     = '';
-    $('modal-admin-panel').classList.add('open');
-  } else {
-    $('admin-auth-error').style.display = '';
-    $('inp-admin-password').value = '';
-    setTimeout(() => { $('admin-auth-error').style.display = 'none'; }, 3000);
-  }
-}
-
-async function saveAdminSettings() {
+async function saveSettings() {
   const newCode = $('inp-new-entry-code').value.trim();
-  const newPw   = $('inp-new-admin-pw').value.trim();
-  if (!newCode && !newPw) { showToast('변경할 내용을 입력하세요'); return; }
+  if (!newCode) { showToast('새 입장 코드를 입력하세요'); return; }
   const cfg = await getAccessConfig();
-  const updated = {
-    entryCode:     newCode || cfg.entryCode,
-    adminPassword: newPw   || cfg.adminPassword,
-  };
+  const updated = { entryCode: newCode || cfg.entryCode };
   try {
     await setDoc(doc(db, 'config', 'access'), updated);
     localStorage.setItem(LS_CONFIG, JSON.stringify(updated));
-    $('modal-admin-panel').classList.remove('open');
-    showToast('설정 저장됨');
+    $('modal-settings').classList.remove('open');
+    showToast('입장 코드가 변경됐습니다');
   } catch(err) {
     showToast('저장 실패: ' + (err?.message || err));
   }
@@ -392,11 +366,10 @@ function renderTripList(trips) {
       <div class="trip-card-actions">
         <button class="icon-action btn-packing-card" data-id="${trip.id}" title="준비물">${ic('ic-suitcase',16)}</button>
         <button class="icon-action btn-dup-card" data-id="${trip.id}" title="복제">${ic('ic-clipboard',16)}</button>
-        <button class="icon-action btn-share-card" data-id="${trip.id}" title="공유">${ic('ic-share',16)}</button>
         <button class="icon-action danger btn-del-trip" data-id="${trip.id}" title="삭제">${ic('ic-trash',16)}</button>
       </div>`;
     card.addEventListener('click', e => {
-      if (e.target.closest('.btn-packing-card,.btn-dup-card,.btn-share-card,.btn-del-trip')) return;
+      if (e.target.closest('.btn-packing-card,.btn-dup-card,.btn-del-trip')) return;
       navigate(trip.id);
     });
     card.querySelector('.btn-packing-card').addEventListener('click', e => {
@@ -407,11 +380,6 @@ function renderTripList(trips) {
     card.querySelector('.btn-dup-card').addEventListener('click', e => {
       e.stopPropagation();
       duplicateTrip(trip);
-    });
-    card.querySelector('.btn-share-card').addEventListener('click', e => {
-      e.stopPropagation();
-      const url = `${location.origin}${location.pathname}?tripId=${trip.id}&view=share`;
-      navigator.clipboard.writeText(url).then(() => showToast('공유 링크 복사됨'));
     });
     card.querySelector('.btn-del-trip').addEventListener('click', async e => {
       e.stopPropagation();
@@ -520,7 +488,7 @@ async function showTimelineView(tripId) {
       <button class="btn sm" data-action="bulk-accom">${ic('ic-bed',14)} 숙소 일괄</button>
       <button class="btn sm ghost" data-action="packing">${ic('ic-suitcase',14)} 준비물</button>
       <button class="btn sm ghost" data-action="share">${ic('ic-share',14)} 공유</button>
-      <button class="btn sm ghost" data-action="data-io">${ic('ic-folder',14)} 내보내기</button>
+      <button class="btn sm ghost" data-action="data-io">${ic('ic-folder',14)} 백업</button>
       <button class="btn sm ghost" data-action="print">${ic('ic-printer',14)} 인쇄</button>`;
 
     $('timeline-header-actions').innerHTML = actionBtnsHtml;
@@ -1141,19 +1109,11 @@ window.addTodo = async function(tripId, date) {
 };
 
 // ══════════════════════════════════════
-//  데이터 내보내기 / 가져오기
+//  데이터 백업
 // ══════════════════════════════════════
 function openDataIOModal(tripId) {
-  const bindIO = () => {
-    $('btn-export-json').onclick        = () => exportJSON(tripId);
-    $('btn-export-days-csv').onclick    = () => exportDaysCSV(tripId);
-    $('btn-export-expenses-csv').onclick= () => exportExpensesCSV(tripId);
-    $('btn-export-transport-csv').onclick= () => exportTransportCSV(tripId);
-    $('btn-import-json').onclick        = () => $('file-import-json').click();
-    $('btn-import-days-csv').onclick    = () => $('file-import-days-csv').click();
-    $('btn-import-expenses-csv').onclick= () => $('file-import-expenses-csv').click();
-  };
-  bindIO();
+  $('btn-export-json').onclick = () => exportJSON(tripId);
+  $('btn-import-json').onclick = () => $('file-import-json').click();
   $('modal-data-io').classList.add('open');
 }
 
@@ -1165,13 +1125,6 @@ function downloadFile(content, filename, type='text/plain') {
   URL.revokeObjectURL(a.href);
 }
 
-function csvEscape(v) {
-  if (v == null) return '';
-  const s = String(v);
-  if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
-  return s;
-}
-
 function exportJSON(tripId) {
   const trip     = currentTripRef || {};
   const dayData  = JSON.parse(localStorage.getItem(LS_DAYS(tripId))||'{}');
@@ -1180,65 +1133,6 @@ function exportJSON(tripId) {
   const name     = (trip.title||'여행').replace(/\s+/g,'_');
   downloadFile(JSON.stringify(payload, null, 2), `${name}_backup.json`, 'application/json');
   showToast('JSON 백업 다운로드됨');
-}
-
-function exportDaysCSV(tripId) {
-  const trip    = currentTripRef || {};
-  const dayData = JSON.parse(localStorage.getItem(LS_DAYS(tripId))||'{}');
-  const days    = generateDays(trip.startDate, trip.endDate);
-  const header  = '날짜,요일,도시,테마,숙소,숙소_지도_링크,메모,할일목록';
-  const DAY_KR  = ['일','월','화','수','목','금','토'];
-  const rows    = days.map(({date, dayIndex}) => {
-    const d    = dayData[date]||{};
-    const dow  = DAY_KR[new Date(date+'T00:00:00').getDay()];
-    const todos= (d.todos||[]).map(t=>t.text).join('|');
-    return [date, dow, d.city||'', d.theme||'', d.accommodation||'', d.accommodationMap||'', d.memo||'', todos].map(csvEscape).join(',');
-  });
-  const name = (trip.title||'여행').replace(/\s+/g,'_');
-  downloadFile('﻿'+[header,...rows].join('\n'), `${name}_일정.csv`, 'text/csv');
-  showToast('일정 CSV 다운로드됨');
-}
-
-function exportExpensesCSV(tripId) {
-  const trip    = currentTripRef || {};
-  const dayData = JSON.parse(localStorage.getItem(LS_DAYS(tripId))||'{}');
-  const days    = generateDays(trip.startDate, trip.endDate);
-  const header  = '날짜,카테고리,항목명,금액,통화,KRW환산';
-  const rows    = [];
-  days.forEach(({date}) => {
-    (dayData[date]?.expenses||[]).forEach(e => {
-      rows.push([date, EXP_LABELS[e.category]||e.category, e.name||'', e.amount||0, e.currency||'KRW', toKRW(e.amount,e.currency)].map(csvEscape).join(','));
-    });
-  });
-  const name = (trip.title||'여행').replace(/\s+/g,'_');
-  downloadFile('﻿'+[header,...rows].join('\n'), `${name}_지출.csv`, 'text/csv');
-  showToast('지출 CSV 다운로드됨');
-}
-
-function exportTransportCSV(tripId) {
-  const trip     = currentTripRef || {};
-  const transData= JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
-  const header   = '유형,출발도시,도착도시,출발날짜,출발시간,도착날짜,도착시간,예약번호,메모';
-  const rows     = transData.map(t =>
-    [t.type||'', t.fromCity||'', t.toCity||'', t.departDate||'', t.departTime||'', t.arriveDate||'', t.arriveTime||'', t.bookingNo||'', t.memo||''].map(csvEscape).join(',')
-  );
-  const name = (trip.title||'여행').replace(/\s+/g,'_');
-  downloadFile('﻿'+[header,...rows].join('\n'), `${name}_교통.csv`, 'text/csv');
-  showToast('교통 CSV 다운로드됨');
-}
-
-function parseCSVLine(line) {
-  const result = []; let cur = '', inQ = false;
-  for (let i = 0; i < line.length; i++) {
-    if (line[i] === '"') {
-      if (inQ && line[i+1] === '"') { cur += '"'; i++; }
-      else inQ = !inQ;
-    } else if (line[i] === ',' && !inQ) {
-      result.push(cur); cur = '';
-    } else cur += line[i];
-  }
-  result.push(cur);
-  return result;
 }
 
 async function importJSON(tripId, text) {
@@ -1268,98 +1162,6 @@ async function importJSON(tripId, text) {
   } catch(err) { showToast('복원 실패: ' + err.message); }
 }
 
-async function importDaysCSV(tripId, text) {
-  try {
-    const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.trim());
-    if (lines.length < 2) { showToast('데이터가 없습니다'); return; }
-    // Skip BOM
-    const headerLine = lines[0].replace(/^﻿/,'');
-    const headers = parseCSVLine(headerLine).map(h=>h.trim().toLowerCase());
-    const idxDate  = headers.findIndex(h=>h.includes('날짜'));
-    const idxCity  = headers.findIndex(h=>h.includes('도시'));
-    const idxTheme = headers.findIndex(h=>h.includes('테마'));
-    const idxAccom = headers.findIndex(h=>h.includes('숙소') && !h.includes('지도'));
-    const idxMap   = headers.findIndex(h=>h.includes('지도'));
-    const idxMemo  = headers.findIndex(h=>h.includes('메모'));
-    const idxTodos = headers.findIndex(h=>h.includes('할일'));
-    if (idxDate < 0) { showToast('날짜 열을 찾을 수 없습니다'); return; }
-    const cacheKey = LS_DAYS(tripId);
-    const dayData  = JSON.parse(localStorage.getItem(cacheKey)||'{}');
-    let count = 0;
-    for (const line of lines.slice(1)) {
-      const cols = parseCSVLine(line);
-      const date = cols[idxDate]?.trim();
-      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
-      if (!dayData[date]) dayData[date] = {};
-      if (idxCity>=0  && cols[idxCity]?.trim())  dayData[date].city          = cols[idxCity].trim();
-      if (idxTheme>=0 && cols[idxTheme]?.trim()) dayData[date].theme         = cols[idxTheme].trim();
-      if (idxAccom>=0 && cols[idxAccom]?.trim()) dayData[date].accommodation = cols[idxAccom].trim();
-      if (idxMap>=0   && cols[idxMap]?.trim())   dayData[date].accommodationMap = cols[idxMap].trim();
-      if (idxMemo>=0  && cols[idxMemo]?.trim())  dayData[date].memo          = cols[idxMemo].trim();
-      if (idxTodos>=0 && cols[idxTodos]?.trim()) {
-        const existing = dayData[date].todos||[];
-        const newTodos = cols[idxTodos].split('|').map(t=>t.trim()).filter(Boolean)
-          .map(text => existing.find(t=>t.text===text) || {text,done:false});
-        dayData[date].todos = newTodos;
-      }
-      try { const ref = doc(db,'trips',tripId,'days',date); try{await updateDoc(ref,dayData[date]);}catch{await setDoc(ref,dayData[date]);} } catch {}
-      count++;
-    }
-    localStorage.setItem(cacheKey, JSON.stringify(dayData));
-    if (currentTripRef) {
-      const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
-      const weather   = JSON.parse(localStorage.getItem(LS_WEATHER(tripId))||'{}');
-      renderTimeline(generateDays(currentTripRef.startDate,currentTripRef.endDate),dayData,transData,weather,tripId);
-    }
-    showToast(`${count}일 일정 가져오기 완료`);
-  } catch(err) { showToast('가져오기 실패: ' + err.message); }
-}
-
-async function importExpensesCSV(tripId, text) {
-  try {
-    const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.trim());
-    if (lines.length < 2) { showToast('데이터가 없습니다'); return; }
-    const headerLine = lines[0].replace(/^﻿/,'');
-    const headers = parseCSVLine(headerLine).map(h=>h.trim().toLowerCase());
-    const idxDate     = headers.findIndex(h=>h.includes('날짜'));
-    const idxCat      = headers.findIndex(h=>h.includes('카테고리'));
-    const idxName     = headers.findIndex(h=>h.includes('항목'));
-    const idxAmt      = headers.findIndex(h=>h.includes('금액'));
-    const idxCurrency = headers.findIndex(h=>h.includes('통화'));
-    if (idxDate<0||idxName<0||idxAmt<0) { showToast('날짜/항목명/금액 열이 필요합니다'); return; }
-    const CAT_REVERSE = {'식비':'food','교통':'transport','숙박':'lodging','관광':'sightseeing','쇼핑':'shopping','기타':'etc'};
-    const cacheKey = LS_DAYS(tripId);
-    const dayData  = JSON.parse(localStorage.getItem(cacheKey)||'{}');
-    // Group by date — replace existing expenses for that date
-    const byDate = {};
-    for (const line of lines.slice(1)) {
-      const cols = parseCSVLine(line);
-      const date = cols[idxDate]?.trim();
-      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
-      if (!byDate[date]) byDate[date] = [];
-      const catRaw = cols[idxCat]?.trim()||'';
-      // Strip emoji prefix from category label
-      const catClean = catRaw.replace(/^[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\s]+/u,'').trim();
-      const cat = CAT_REVERSE[catClean] || 'etc';
-      byDate[date].push({ id:genId(), category:cat, name:cols[idxName]?.trim()||'', amount:Number(cols[idxAmt])||0, currency:cols[idxCurrency]?.trim()||'KRW' });
-    }
-    let count = 0;
-    for (const [date, expenses] of Object.entries(byDate)) {
-      if (!dayData[date]) dayData[date] = {};
-      dayData[date].expenses = expenses;
-      try { const ref = doc(db,'trips',tripId,'days',date); try{await updateDoc(ref,{expenses});}catch{await setDoc(ref,dayData[date]);} } catch {}
-      count++;
-    }
-    localStorage.setItem(cacheKey, JSON.stringify(dayData));
-    if (currentTripRef) {
-      const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
-      const weather   = JSON.parse(localStorage.getItem(LS_WEATHER(tripId))||'{}');
-      renderTimeline(generateDays(currentTripRef.startDate,currentTripRef.endDate),dayData,transData,weather,tripId);
-    }
-    showToast(`${count}일 지출 가져오기 완료`);
-  } catch(err) { showToast('가져오기 실패: ' + err.message); }
-}
-
 window.switchModalTab = function(tab) {
   document.querySelectorAll('.modal-tab').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
   document.querySelectorAll('.tab-pane').forEach(p => { p.style.display = p.id === `tab-${tab}` ? '' : 'none'; });
@@ -1375,10 +1177,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // 입장 코드
   $('btn-entry-submit').addEventListener('click', handleEntrySubmit);
 
-  // 관리자 gear
-  $('btn-admin-gear').addEventListener('click', openAdminAuth);
-  $('btn-verify-admin').addEventListener('click', verifyAdmin);
-  $('btn-save-admin-settings').addEventListener('click', saveAdminSettings);
+  // 설정
+  $('btn-settings').addEventListener('click', openSettings);
+  $('btn-save-settings').addEventListener('click', saveSettings);
 
   // 대시보드
   $('btn-new-trip').addEventListener('click', openNewTripModal);
@@ -1402,18 +1203,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const reader = new FileReader();
     reader.onload = ev => importJSON(currentTripId, ev.target.result);
     reader.readAsText(f); e.target.value='';
-  });
-  $('file-import-days-csv').addEventListener('change', e => {
-    const f = e.target.files[0]; if (!f) return;
-    const reader = new FileReader();
-    reader.onload = ev => importDaysCSV(currentTripId, ev.target.result);
-    reader.readAsText(f, 'utf-8'); e.target.value='';
-  });
-  $('file-import-expenses-csv').addEventListener('change', e => {
-    const f = e.target.files[0]; if (!f) return;
-    const reader = new FileReader();
-    reader.onload = ev => importExpensesCSV(currentTripId, ev.target.result);
-    reader.readAsText(f, 'utf-8'); e.target.value='';
   });
   $('inp-exp-amount').addEventListener('keydown', e => { if(e.key==='Enter') addEditExpense(); });
   const updateExpPreview = () => {
