@@ -515,9 +515,16 @@ select.inp {
 }
 .memo-note.open { display: block; }
 
-/* To-Do */
-.todo-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
-.todo-item { display: flex; align-items: center; gap: 8px; font-size: .92rem; }
+/* To-Do — iOS 그룹 인셋 리스트: 카드 하나 + hairline으로 행 구분 */
+.todo-list {
+  list-style: none;
+  background: var(--surface-2); border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm); overflow: hidden;
+}
+.todo-item { display: flex; align-items: center; gap: 8px; font-size: .92rem; padding: 10px 14px; position: relative; }
+.todo-list .todo-item + .todo-item::before {
+  content: ''; position: absolute; top: 0; left: 14px; right: 0; height: 1px; background: var(--hairline);
+}
 .todo-item input[type=checkbox] { width: 16px; height: 16px; border-radius: 4px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
 .todo-time { font-size: .78rem; font-weight: 700; color: var(--text-3); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .todo-item.done label { text-decoration: line-through; color: var(--text-3); }
