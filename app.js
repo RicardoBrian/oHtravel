@@ -569,6 +569,7 @@ async function showTimelineView(tripId) {
       <button class="btn sm" data-action="budget">💰 예산 설정</button>
       <button class="btn sm" data-action="stats">📊 통계</button>
       <button class="btn sm" data-action="share">🔗 공유</button>
+      <button class="btn sm" data-action="data-io">📂 내보내기</button>
       <button class="btn sm" data-action="print">🖨️ 인쇄</button>`;
 
     $('timeline-header-actions').innerHTML = actionBtnsHtml;
@@ -588,6 +589,7 @@ async function showTimelineView(tripId) {
           const url = `${location.origin}${location.pathname}?tripId=${tripId}&view=share`;
           navigator.clipboard.writeText(url).then(() => showToast('공유 링크 복사됨'));
         }
+        else if (a==='data-io') openDataIOModal(tripId);
         else if (a==='print') window.print();
       });
     };
@@ -1205,20 +1207,13 @@ window.openEditModal = function(date, tripId) {
   $('inp-accom-map').value  = data.accommodationMap||'';
   $('inp-memo').value       = data.memo||'';
   $('inp-todos').value      = (data.todos||[]).map(t=>t.text).join('\n');
-  const memoField = $('memo-field');
-  if (data.memo) { memoField.style.display=''; $('memo-toggle-icon').textContent='▲ 접기'; }
-  else           { memoField.style.display='none'; $('memo-toggle-icon').textContent='▼ 펼치기'; }
   editingExpenses = JSON.parse(JSON.stringify(data.expenses||[]));
   renderEditExpenses();
   $('btn-save-day').onclick = () => saveDayEdit(tripId, date);
+  switchModalTab('basic');
   $('modal-edit-day').classList.add('open');
 };
 window.closeEditModal  = function() { $('modal-edit-day').classList.remove('open'); };
-window.toggleMemoField = function() {
-  const f = $('memo-field'), shown = f.style.display !== 'none';
-  f.style.display = shown ? 'none' : '';
-  $('memo-toggle-icon').textContent = shown ? '▼ 펼치기' : '▲ 접기';
-};
 
 function renderEditExpenses() {
   $('expense-list-edit').innerHTML = editingExpenses.map((e,i) => `
@@ -1300,6 +1295,232 @@ window.addTodo = async function(tripId, date) {
 };
 
 // ══════════════════════════════════════
+//  데이터 내보내기 / 가져오기
+// ══════════════════════════════════════
+function openDataIOModal(tripId) {
+  const bindIO = () => {
+    $('btn-export-json').onclick        = () => exportJSON(tripId);
+    $('btn-export-days-csv').onclick    = () => exportDaysCSV(tripId);
+    $('btn-export-expenses-csv').onclick= () => exportExpensesCSV(tripId);
+    $('btn-export-transport-csv').onclick= () => exportTransportCSV(tripId);
+    $('btn-import-json').onclick        = () => $('file-import-json').click();
+    $('btn-import-days-csv').onclick    = () => $('file-import-days-csv').click();
+    $('btn-import-expenses-csv').onclick= () => $('file-import-expenses-csv').click();
+  };
+  bindIO();
+  $('modal-data-io').classList.add('open');
+}
+
+function downloadFile(content, filename, type='text/plain') {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], {type}));
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function csvEscape(v) {
+  if (v == null) return '';
+  const s = String(v);
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function exportJSON(tripId) {
+  const trip     = currentTripRef || {};
+  const dayData  = JSON.parse(localStorage.getItem(LS_DAYS(tripId))||'{}');
+  const transData= JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
+  const payload  = { trip, dayData, transData, exportedAt: new Date().toISOString() };
+  const name     = (trip.title||'여행').replace(/\s+/g,'_');
+  downloadFile(JSON.stringify(payload, null, 2), `${name}_backup.json`, 'application/json');
+  showToast('JSON 백업 다운로드됨');
+}
+
+function exportDaysCSV(tripId) {
+  const trip    = currentTripRef || {};
+  const dayData = JSON.parse(localStorage.getItem(LS_DAYS(tripId))||'{}');
+  const days    = generateDays(trip.startDate, trip.endDate);
+  const header  = '날짜,요일,도시,테마,숙소,숙소_지도_링크,메모,할일목록';
+  const DAY_KR  = ['일','월','화','수','목','금','토'];
+  const rows    = days.map(({date, dayIndex}) => {
+    const d    = dayData[date]||{};
+    const dow  = DAY_KR[new Date(date+'T00:00:00').getDay()];
+    const todos= (d.todos||[]).map(t=>t.text).join('|');
+    return [date, dow, d.city||'', d.theme||'', d.accommodation||'', d.accommodationMap||'', d.memo||'', todos].map(csvEscape).join(',');
+  });
+  const name = (trip.title||'여행').replace(/\s+/g,'_');
+  downloadFile('﻿'+[header,...rows].join('\n'), `${name}_일정.csv`, 'text/csv');
+  showToast('일정 CSV 다운로드됨');
+}
+
+function exportExpensesCSV(tripId) {
+  const trip    = currentTripRef || {};
+  const dayData = JSON.parse(localStorage.getItem(LS_DAYS(tripId))||'{}');
+  const days    = generateDays(trip.startDate, trip.endDate);
+  const header  = '날짜,카테고리,항목명,금액,통화,KRW환산';
+  const rows    = [];
+  days.forEach(({date}) => {
+    (dayData[date]?.expenses||[]).forEach(e => {
+      rows.push([date, EXP_LABELS[e.category]||e.category, e.name||'', e.amount||0, e.currency||'KRW', toKRW(e.amount,e.currency)].map(csvEscape).join(','));
+    });
+  });
+  const name = (trip.title||'여행').replace(/\s+/g,'_');
+  downloadFile('﻿'+[header,...rows].join('\n'), `${name}_지출.csv`, 'text/csv');
+  showToast('지출 CSV 다운로드됨');
+}
+
+function exportTransportCSV(tripId) {
+  const trip     = currentTripRef || {};
+  const transData= JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
+  const header   = '유형,출발도시,도착도시,출발날짜,출발시간,도착날짜,도착시간,예약번호,메모';
+  const rows     = transData.map(t =>
+    [t.type||'', t.fromCity||'', t.toCity||'', t.departDate||'', t.departTime||'', t.arriveDate||'', t.arriveTime||'', t.bookingNo||'', t.memo||''].map(csvEscape).join(',')
+  );
+  const name = (trip.title||'여행').replace(/\s+/g,'_');
+  downloadFile('﻿'+[header,...rows].join('\n'), `${name}_교통.csv`, 'text/csv');
+  showToast('교통 CSV 다운로드됨');
+}
+
+function parseCSVLine(line) {
+  const result = []; let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '"') {
+      if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+      else inQ = !inQ;
+    } else if (line[i] === ',' && !inQ) {
+      result.push(cur); cur = '';
+    } else cur += line[i];
+  }
+  result.push(cur);
+  return result;
+}
+
+async function importJSON(tripId, text) {
+  try {
+    const data = JSON.parse(text);
+    if (!data.dayData) { showToast('유효하지 않은 백업 파일'); return; }
+    const cacheKey = LS_DAYS(tripId);
+    localStorage.setItem(cacheKey, JSON.stringify(data.dayData));
+    if (data.transData) localStorage.setItem(LS_TRANS(tripId), JSON.stringify(data.transData));
+    // Sync to Firestore
+    const entries = Object.entries(data.dayData);
+    for (const [date, dayDoc] of entries) {
+      try { const ref = doc(db,'trips',tripId,'days',date); try{await updateDoc(ref,dayDoc);}catch{await setDoc(ref,dayDoc);} } catch {}
+    }
+    if (data.transData) {
+      for (const t of data.transData) {
+        try { await setDoc(doc(db,'trips',tripId,'transports',t.id||genId()), t); } catch {}
+      }
+    }
+    if (currentTripRef) {
+      const dayData  = data.dayData;
+      const transData= data.transData||[];
+      const weather  = JSON.parse(localStorage.getItem(LS_WEATHER(tripId))||'{}');
+      renderTimeline(generateDays(currentTripRef.startDate, currentTripRef.endDate), dayData, transData, weather, tripId);
+    }
+    showToast('JSON 백업 복원 완료 ✓');
+  } catch(err) { showToast('복원 실패: ' + err.message); }
+}
+
+async function importDaysCSV(tripId, text) {
+  try {
+    const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.trim());
+    if (lines.length < 2) { showToast('데이터가 없습니다'); return; }
+    // Skip BOM
+    const headerLine = lines[0].replace(/^﻿/,'');
+    const headers = parseCSVLine(headerLine).map(h=>h.trim().toLowerCase());
+    const idxDate  = headers.findIndex(h=>h.includes('날짜'));
+    const idxCity  = headers.findIndex(h=>h.includes('도시'));
+    const idxTheme = headers.findIndex(h=>h.includes('테마'));
+    const idxAccom = headers.findIndex(h=>h.includes('숙소') && !h.includes('지도'));
+    const idxMap   = headers.findIndex(h=>h.includes('지도'));
+    const idxMemo  = headers.findIndex(h=>h.includes('메모'));
+    const idxTodos = headers.findIndex(h=>h.includes('할일'));
+    if (idxDate < 0) { showToast('날짜 열을 찾을 수 없습니다'); return; }
+    const cacheKey = LS_DAYS(tripId);
+    const dayData  = JSON.parse(localStorage.getItem(cacheKey)||'{}');
+    let count = 0;
+    for (const line of lines.slice(1)) {
+      const cols = parseCSVLine(line);
+      const date = cols[idxDate]?.trim();
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+      if (!dayData[date]) dayData[date] = {};
+      if (idxCity>=0  && cols[idxCity]?.trim())  dayData[date].city          = cols[idxCity].trim();
+      if (idxTheme>=0 && cols[idxTheme]?.trim()) dayData[date].theme         = cols[idxTheme].trim();
+      if (idxAccom>=0 && cols[idxAccom]?.trim()) dayData[date].accommodation = cols[idxAccom].trim();
+      if (idxMap>=0   && cols[idxMap]?.trim())   dayData[date].accommodationMap = cols[idxMap].trim();
+      if (idxMemo>=0  && cols[idxMemo]?.trim())  dayData[date].memo          = cols[idxMemo].trim();
+      if (idxTodos>=0 && cols[idxTodos]?.trim()) {
+        const existing = dayData[date].todos||[];
+        const newTodos = cols[idxTodos].split('|').map(t=>t.trim()).filter(Boolean)
+          .map(text => existing.find(t=>t.text===text) || {text,done:false});
+        dayData[date].todos = newTodos;
+      }
+      try { const ref = doc(db,'trips',tripId,'days',date); try{await updateDoc(ref,dayData[date]);}catch{await setDoc(ref,dayData[date]);} } catch {}
+      count++;
+    }
+    localStorage.setItem(cacheKey, JSON.stringify(dayData));
+    if (currentTripRef) {
+      const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
+      const weather   = JSON.parse(localStorage.getItem(LS_WEATHER(tripId))||'{}');
+      renderTimeline(generateDays(currentTripRef.startDate,currentTripRef.endDate),dayData,transData,weather,tripId);
+    }
+    showToast(`${count}일 일정 가져오기 완료 ✓`);
+  } catch(err) { showToast('가져오기 실패: ' + err.message); }
+}
+
+async function importExpensesCSV(tripId, text) {
+  try {
+    const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.trim());
+    if (lines.length < 2) { showToast('데이터가 없습니다'); return; }
+    const headerLine = lines[0].replace(/^﻿/,'');
+    const headers = parseCSVLine(headerLine).map(h=>h.trim().toLowerCase());
+    const idxDate     = headers.findIndex(h=>h.includes('날짜'));
+    const idxCat      = headers.findIndex(h=>h.includes('카테고리'));
+    const idxName     = headers.findIndex(h=>h.includes('항목'));
+    const idxAmt      = headers.findIndex(h=>h.includes('금액'));
+    const idxCurrency = headers.findIndex(h=>h.includes('통화'));
+    if (idxDate<0||idxName<0||idxAmt<0) { showToast('날짜/항목명/금액 열이 필요합니다'); return; }
+    const CAT_REVERSE = {'식비':'food','교통':'transport','숙박':'lodging','관광':'sightseeing','쇼핑':'shopping','기타':'etc'};
+    const cacheKey = LS_DAYS(tripId);
+    const dayData  = JSON.parse(localStorage.getItem(cacheKey)||'{}');
+    // Group by date — replace existing expenses for that date
+    const byDate = {};
+    for (const line of lines.slice(1)) {
+      const cols = parseCSVLine(line);
+      const date = cols[idxDate]?.trim();
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+      if (!byDate[date]) byDate[date] = [];
+      const catRaw = cols[idxCat]?.trim()||'';
+      // Strip emoji prefix from category label
+      const catClean = catRaw.replace(/^[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\s]+/u,'').trim();
+      const cat = CAT_REVERSE[catClean] || 'etc';
+      byDate[date].push({ id:genId(), category:cat, name:cols[idxName]?.trim()||'', amount:Number(cols[idxAmt])||0, currency:cols[idxCurrency]?.trim()||'KRW' });
+    }
+    let count = 0;
+    for (const [date, expenses] of Object.entries(byDate)) {
+      if (!dayData[date]) dayData[date] = {};
+      dayData[date].expenses = expenses;
+      try { const ref = doc(db,'trips',tripId,'days',date); try{await updateDoc(ref,{expenses});}catch{await setDoc(ref,dayData[date]);} } catch {}
+      count++;
+    }
+    localStorage.setItem(cacheKey, JSON.stringify(dayData));
+    if (currentTripRef) {
+      const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
+      const weather   = JSON.parse(localStorage.getItem(LS_WEATHER(tripId))||'{}');
+      renderTimeline(generateDays(currentTripRef.startDate,currentTripRef.endDate),dayData,transData,weather,tripId);
+      updateBudgetBar(currentTripRef, dayData);
+    }
+    showToast(`${count}일 지출 가져오기 완료 ✓`);
+  } catch(err) { showToast('가져오기 실패: ' + err.message); }
+}
+
+window.switchModalTab = function(tab) {
+  document.querySelectorAll('.modal-tab').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
+  document.querySelectorAll('.tab-pane').forEach(p => { p.style.display = p.id === `tab-${tab}` ? '' : 'none'; });
+};
+
+// ══════════════════════════════════════
 //  이벤트 바인딩
 // ══════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
@@ -1329,6 +1550,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 지출
   $('btn-add-expense').addEventListener('click', addEditExpense);
+
+  // 파일 가져오기 핸들러
+  $('file-import-json').addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    const reader = new FileReader();
+    reader.onload = ev => importJSON(currentTripId, ev.target.result);
+    reader.readAsText(f); e.target.value='';
+  });
+  $('file-import-days-csv').addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    const reader = new FileReader();
+    reader.onload = ev => importDaysCSV(currentTripId, ev.target.result);
+    reader.readAsText(f, 'utf-8'); e.target.value='';
+  });
+  $('file-import-expenses-csv').addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    const reader = new FileReader();
+    reader.onload = ev => importExpensesCSV(currentTripId, ev.target.result);
+    reader.readAsText(f, 'utf-8'); e.target.value='';
+  });
   $('inp-exp-amount').addEventListener('keydown', e => { if(e.key==='Enter') addEditExpense(); });
   const updateExpPreview = () => {
     const amount = Number($('inp-exp-amount').value);

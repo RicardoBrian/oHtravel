@@ -176,54 +176,64 @@
 
   <!-- 날짜 카드 편집 -->
   <div class="modal" id="modal-edit-day" onclick="if(event.target===this)closeEditModal()">
-    <div class="modal-card" style="width:min(560px,96vw);max-height:88vh;overflow-y:auto;">
-      <div class="t-head" style="margin-bottom:16px;" id="modal-day-title">편집</div>
-      <div class="field"><label>오늘의 테마 (선택)</label><input class="inp" id="inp-theme" placeholder="예: 방콕 시내 탐방, 이동의 날" /></div>
-      <div class="field"><label>방문 도시</label><input class="inp" id="inp-city" placeholder="예: 방콕, 파리, 도쿄" /></div>
-      <div class="field"><label>숙소 이름</label><input class="inp" id="inp-accom-name" placeholder="숙소 이름" /></div>
-      <div class="field"><label>숙소 구글맵 링크</label><input class="inp" id="inp-accom-map" placeholder="https://maps.google.com/..." /></div>
-      <div class="field">
-        <label>지출 내역</label>
-        <div id="expense-list-edit" style="margin-bottom:8px;"></div>
-        <div class="expense-add-row">
-          <select class="inp" id="inp-exp-cat" style="flex:0 0 100px;">
-            <option value="food">🍜 식비</option>
-            <option value="transport">🚌 교통</option>
-            <option value="lodging">🏨 숙박</option>
-            <option value="sightseeing">🎡 관광</option>
-            <option value="shopping">🛍️ 쇼핑</option>
-            <option value="etc">📦 기타</option>
-          </select>
-          <input class="inp" id="inp-exp-name" placeholder="항목명" style="flex:1;" />
-          <div style="display:flex;flex-direction:column;gap:2px;">
-            <input type="number" class="inp" id="inp-exp-amount" placeholder="금액" style="width:80px;" min="0" />
-            <span id="exp-krw-preview" style="font-size:.72rem;color:var(--text-3);min-height:14px;"></span>
+    <div class="modal-card" style="width:min(560px,96vw);max-height:92vh;display:flex;flex-direction:column;">
+      <div class="t-head" style="margin-bottom:12px;" id="modal-day-title">편집</div>
+      <!-- 탭 헤더 -->
+      <div class="modal-tabs">
+        <button class="modal-tab active" data-tab="basic" onclick="switchModalTab('basic')">기본 정보</button>
+        <button class="modal-tab" data-tab="expense" onclick="switchModalTab('expense')">지출</button>
+        <button class="modal-tab" data-tab="memo" onclick="switchModalTab('memo')">메모 · 할일</button>
+      </div>
+      <!-- 탭 콘텐츠: overflow-y scroll -->
+      <div style="overflow-y:auto;flex:1;padding:4px 0;">
+        <!-- 기본 정보 탭 -->
+        <div id="tab-basic" class="tab-pane">
+          <div class="field"><label>오늘의 테마</label><input class="inp" id="inp-theme" placeholder="예: 방콕 시내 탐방, 이동의 날" /></div>
+          <div class="field"><label>방문 도시</label><input class="inp" id="inp-city" placeholder="예: 방콕, 파리, 도쿄" /></div>
+          <div class="field"><label>숙소 이름</label><input class="inp" id="inp-accom-name" placeholder="숙소 이름" /></div>
+          <div class="field"><label>숙소 구글맵 링크</label><input class="inp" id="inp-accom-map" placeholder="https://maps.google.com/..." /></div>
+        </div>
+        <!-- 지출 탭 -->
+        <div id="tab-expense" class="tab-pane" style="display:none;">
+          <div id="expense-list-edit" style="margin-bottom:12px;"></div>
+          <div class="expense-add-row">
+            <select class="inp" id="inp-exp-cat" style="flex:0 0 90px;font-size:.82rem;">
+              <option value="food">🍜 식비</option>
+              <option value="transport">🚌 교통</option>
+              <option value="lodging">🏨 숙박</option>
+              <option value="sightseeing">🎡 관광</option>
+              <option value="shopping">🛍️ 쇼핑</option>
+              <option value="etc">📦 기타</option>
+            </select>
+            <input class="inp" id="inp-exp-name" placeholder="항목명" style="flex:1;" />
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <input type="number" class="inp" id="inp-exp-amount" placeholder="금액" style="width:80px;" min="0" />
+              <span id="exp-krw-preview" style="font-size:.7rem;color:var(--text-3);min-height:13px;padding-left:2px;"></span>
+            </div>
+            <select class="inp" id="inp-exp-currency" style="flex:0 0 70px;font-size:.82rem;">
+              <option value="KRW">₩ KRW</option>
+              <option value="USD">$ USD</option>
+              <option value="JPY">¥ JPY</option>
+              <option value="EUR">€ EUR</option>
+              <option value="THB">฿ THB</option>
+              <option value="VND">₫ VND</option>
+              <option value="SGD">S$ SGD</option>
+              <option value="GBP">£ GBP</option>
+            </select>
+            <button class="btn sm icon-btn" id="btn-add-expense">+</button>
           </div>
-          <select class="inp" id="inp-exp-currency" style="flex:0 0 72px;">
-            <option value="KRW">₩ KRW</option>
-            <option value="USD">$ USD</option>
-            <option value="JPY">¥ JPY</option>
-            <option value="EUR">€ EUR</option>
-            <option value="THB">฿ THB</option>
-            <option value="VND">₫ VND</option>
-            <option value="SGD">S$ SGD</option>
-            <option value="GBP">£ GBP</option>
-          </select>
-          <button class="btn sm icon-btn" id="btn-add-expense">+</button>
+        </div>
+        <!-- 메모·할일 탭 -->
+        <div id="tab-memo" class="tab-pane" style="display:none;">
+          <div class="field"><label>메모 / 일기</label>
+            <textarea class="inp" id="inp-memo" rows="5" placeholder="오늘의 기록..."></textarea>
+          </div>
+          <div class="field"><label>To-Do 항목 <span style="font-weight:400;color:var(--text-3)">(줄바꿈으로 구분)</span></label>
+            <textarea class="inp" id="inp-todos" rows="4" placeholder="박물관 예약&#10;환전하기"></textarea>
+          </div>
         </div>
       </div>
-      <div class="field">
-        <label style="cursor:pointer;" onclick="toggleMemoField()">
-          📝 메모 / 일기 <span id="memo-toggle-icon" style="color:var(--text-3);font-weight:400;">▼ 펼치기</span>
-        </label>
-        <div id="memo-field" style="display:none;">
-          <textarea class="inp" id="inp-memo" rows="3" placeholder="오늘의 기록..."></textarea>
-        </div>
-      </div>
-      <div class="field"><label>To-Do 항목 (줄바꿈으로 구분)</label>
-        <textarea class="inp" id="inp-todos" rows="3" placeholder="박물관 예약&#10;환전하기"></textarea>
-      </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--hairline);">
         <button class="btn ghost" onclick="closeEditModal()">취소</button>
         <button class="btn accent" id="btn-save-day">저장</button>
       </div>
@@ -308,6 +318,51 @@
       </div>
     </div>
   </div>
+
+  <!-- 데이터 내보내기/가져오기 -->
+  <div class="modal" id="modal-data-io" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal-card" style="width:min(480px,96vw);">
+      <div class="t-head" style="margin-bottom:16px;">데이터 내보내기 / 가져오기</div>
+      <div style="margin-bottom:20px;">
+        <div class="day-section-label" style="margin-bottom:10px;">📥 내보내기</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button class="btn" id="btn-export-json" style="justify-content:flex-start;gap:10px;">
+            <span>📦</span><div><div style="font-weight:600;font-size:.9rem;">전체 백업 (JSON)</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">모든 데이터 완전 백업 · 재가져오기 가능</div></div>
+          </button>
+          <button class="btn" id="btn-export-days-csv" style="justify-content:flex-start;gap:10px;">
+            <span>📅</span><div><div style="font-weight:600;font-size:.9rem;">일정 CSV</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">날짜별 도시, 테마, 숙소, 메모</div></div>
+          </button>
+          <button class="btn" id="btn-export-expenses-csv" style="justify-content:flex-start;gap:10px;">
+            <span>💰</span><div><div style="font-weight:600;font-size:.9rem;">지출 CSV</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">전체 지출 내역 스프레드시트</div></div>
+          </button>
+          <button class="btn" id="btn-export-transport-csv" style="justify-content:flex-start;gap:10px;">
+            <span>✈️</span><div><div style="font-weight:600;font-size:.9rem;">교통 CSV</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">교통편 목록</div></div>
+          </button>
+        </div>
+      </div>
+      <div>
+        <div class="day-section-label" style="margin-bottom:10px;">📤 가져오기</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button class="btn" id="btn-import-json" style="justify-content:flex-start;gap:10px;">
+            <span>📦</span><div><div style="font-weight:600;font-size:.9rem;">JSON 백업 복원</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">기존 데이터를 덮어씁니다</div></div>
+          </button>
+          <button class="btn" id="btn-import-days-csv" style="justify-content:flex-start;gap:10px;">
+            <span>📅</span><div><div style="font-weight:600;font-size:.9rem;">일정 CSV 가져오기</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">날짜, 도시, 테마, 숙소, 메모 업데이트</div></div>
+          </button>
+          <button class="btn" id="btn-import-expenses-csv" style="justify-content:flex-start;gap:10px;">
+            <span>💰</span><div><div style="font-weight:600;font-size:.9rem;">지출 CSV 가져오기</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">날짜별 지출 추가 (기존 지출 대체)</div></div>
+          </button>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+        <button class="btn ghost" onclick="document.getElementById('modal-data-io').classList.remove('open')">닫기</button>
+      </div>
+    </div>
+  </div>
+  <!-- hidden file inputs -->
+  <input type="file" id="file-import-json" accept=".json" style="display:none;" />
+  <input type="file" id="file-import-days-csv" accept=".csv" style="display:none;" />
+  <input type="file" id="file-import-expenses-csv" accept=".csv" style="display:none;" />
 
   <div class="toast" id="toast">
     <span id="toast-msg"></span>

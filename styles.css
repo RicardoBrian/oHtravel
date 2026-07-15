@@ -203,6 +203,38 @@ select.inp {
   box-shadow: var(--highlight), var(--shadow-md);
 }
 
+/* 모달 탭 */
+.modal-tabs { display: flex; gap: 2px; margin-bottom: 16px; border-bottom: 1px solid var(--hairline); }
+.modal-tab {
+  background: none; border: none; cursor: pointer;
+  font-size: .88rem; font-weight: 600; color: var(--text-3);
+  padding: 8px 16px; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: color var(--dur), border-color var(--dur);
+}
+.modal-tab:hover { color: var(--text-1); }
+.modal-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* 데이터 IO 모달 버튼 */
+#modal-data-io .btn { display: flex; align-items: center; width: 100%; text-align: left; padding: 12px 14px; gap: 12px; }
+#modal-data-io .btn > span:first-child { font-size: 1.3rem; flex-shrink: 0; }
+
+/* 모달 탭 */
+.modal-tabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 1px solid var(--hairline); padding-bottom: 0; }
+.modal-tab {
+  background: none; border: none; cursor: pointer;
+  font-size: .88rem; font-weight: 600; color: var(--text-3);
+  padding: 8px 14px; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: color var(--dur), border-color var(--dur);
+}
+.modal-tab:hover { color: var(--text-1); }
+.modal-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* 데이터 IO 모달 버튼 */
+#modal-data-io .btn { display: flex; align-items: center; width: 100%; text-align: left; padding: 12px 14px; }
+#modal-data-io .btn span { font-size: 1.4rem; flex-shrink: 0; }
+
 /* ── 토스트 ── */
 .toast {
   position: fixed; bottom: 28px; left: 50%;
