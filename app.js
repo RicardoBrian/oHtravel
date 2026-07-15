@@ -677,8 +677,13 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
   const editBtn = isReadOnly ? '' : `<button class="icon-action day-edit-btn" title="편집" onclick="openEditModal('${date}','${tripId}')"><svg class="ic" width="16" height="16"><use href="#ic-edit"/></svg></button>`;
   const collapseIcon = ic('ic-chevron', 14);
 
-  // ── 교통 (내용 있을 때만) ──
-  const transHtml = dayTrans.length ? dayTrans.map(t => {
+  // ── 교통 (일정 타임라인에 시간 있는 할일과 함께 합쳐짐) ──
+  const transTimeKey = t => {
+    if (t.departDate===date && t.departTime) return t.departTime;
+    if (t.arriveDate===date && t.arriveTime) return t.arriveTime;
+    return '';
+  };
+  const transportEntries = dayTrans.map(t => {
     const isDepart = t.departDate===date, isArrive = t.arriveDate===date;
     const badge = (!isDepart&&!isArrive) ? '<span class="transit-day-badge">이동 중</span>' : '';
     const duration = calcTransDuration(t.departDate, t.departTime, t.arriveDate, t.arriveTime);
@@ -690,14 +695,15 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
     const actBtns = isReadOnly ? '' :
       `<button class="icon-action sm" title="편집" onclick="openTransportModal('${t.id}','${tripId}')"><svg class="ic" width="15" height="15"><use href="#ic-edit"/></svg></button>
        <button class="icon-action sm danger" title="삭제" onclick="deleteTransport('${t.id}','${tripId}')"><svg class="ic" width="15" height="15"><use href="#ic-trash"/></svg></button>`;
-    return `<div class="transport-item">
+    const html = `<div class="transport-item">
       <div class="transport-route">${ic(TRANS_ICONS[t.type]||'ic-car',15)} <b>${escHtml(t.fromCity||'?')}</b><span class="arrow">→</span><b>${escHtml(t.toCity||'?')}</b>${badge}</div>
       ${timeStr?`<div class="transport-meta">${ic('ic-clock',13)} ${timeStr}${durationStr}</div>`:''}
       ${t.bookingNo?`<div class="transport-booking">${ic('ic-clipboard',13)} ${escHtml(t.bookingNo)}</div>`:''}
       ${memoChip(t.memo)}
       ${actBtns?`<div class="transport-actions">${actBtns}</div>`:''}
     </div>`;
-  }).join('') : '';
+    return { key: transTimeKey(t), html };
+  });
 
   // ── 숙소 (내용 있을 때만) ──
   const accomHtml = data.accommodation ? (() => {
@@ -722,35 +728,41 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
   // ── 메모 (내용 있을 때만) ──
   const memoHtml = data.memo ? `<div class="memo-box">${autoLink(data.memo)}</div>` : '';
 
-  // ── To-Do (시간 있는 항목 먼저 시간순, 없는 항목은 입력 순서대로 아래) ──
+  // ── To-Do: 시간 있는 항목은 교통과 합쳐 "일정" 타임라인으로, 없는 항목은 아래 체크리스트로 ──
   const todos = data.todos || [];
-  const sortedTodos = todos
-    .map((todo, i) => ({ ...todo, _i: i }))
-    .sort((a, b) => {
-      if (a.time && b.time) return a.time.localeCompare(b.time);
-      if (a.time) return -1;
-      if (b.time) return 1;
-      return a._i - b._i;
-    });
-  const todoClass = isReadOnly ? 'class="todo-list readonly-todos"' : 'class="todo-list"';
-  const todoItems = sortedTodos.map(todo => `
-    <li class="todo-item${todo.done?' done':''}" id="td-${date}-${todo._i}">
+  const indexedTodos = todos.map((todo, i) => ({ ...todo, _i: i }));
+  const timedTodos   = indexedTodos.filter(t => t.time).sort((a,b) => a.time.localeCompare(b.time));
+  const untimedTodos = indexedTodos.filter(t => !t.time);
+
+  const todoRowHtml = (todo, tag, withTime) => `
+    <${tag} class="todo-item${todo.done?' done':''}" id="td-${date}-${todo._i}">
       <input type="checkbox" ${todo.done?'checked':''} ${isReadOnly?'disabled':''}
         onchange="toggleTodo('${tripId}','${date}',${todo._i},this.checked)" />
-      ${todo.time ? `<span class="todo-time">${todo.time}</span>` : ''}
+      ${withTime ? `<span class="todo-time">${todo.time}</span>` : ''}
       <label>${escHtml(todo.text)}</label>
-    </li>`).join('');
+    </${tag}>`;
+
+  // ── 일정: 교통 + 시간 등록된 할일을 시간순으로 통합 ──
+  const scheduleEntries = [
+    ...transportEntries,
+    ...timedTodos.map(todo => ({ key: todo.time, html: todoRowHtml(todo, 'div', true) })),
+  ].sort((a,b) => a.key.localeCompare(b.key));
+  const scheduleHtml = scheduleEntries.length
+    ? `<div class="schedule-list">${scheduleEntries.map(e => e.html).join('')}</div>` : '';
+
+  const todoClass = isReadOnly ? 'class="todo-list readonly-todos"' : 'class="todo-list"';
+  const untimedTodoItems = untimedTodos.map(todo => todoRowHtml(todo, 'li', false)).join('');
   const addTodoRow = isReadOnly ? '' : `
     <div class="todo-add-row">
       <input class="todo-add-inp" id="ti-${date}" placeholder="할 일 추가... (예: 10:00 박물관 예약)"
         onkeydown="if(event.key==='Enter')addTodo('${tripId}','${date}')" />
       <button class="btn sm icon-btn" onclick="addTodo('${tripId}','${date}')">+</button>
     </div>`;
-  const todoHtml = (todos.length || !isReadOnly) ? `<ul ${todoClass}>${todoItems}</ul>${addTodoRow}` : '';
+  const todoHtml = (untimedTodos.length || !isReadOnly) ? `<ul ${todoClass}>${untimedTodoItems}</ul>${addTodoRow}` : '';
 
   // ── 섹션 조합 (내용 있을 때만 렌더) ──
   const sections = [
-    transHtml  ? `<div class="day-section">${transHtml}</div>` : '',
+    scheduleHtml ? `<div class="day-section"><div class="day-section-label">${ic('ic-clock',13)} 일정</div>${scheduleHtml}</div>` : '',
     accomHtml  ? `<div class="day-section"><div class="day-section-label">${ic('ic-bed',13)} 숙소</div>${accomHtml}</div>` : '',
     memoHtml   ? `<div class="day-section"><div class="day-section-label">${ic('ic-note',13)} 메모</div>${memoHtml}</div>` : '',
     todoHtml   ? `<div class="day-section"><div class="day-section-label">${ic('ic-checklist',13)} To-Do</div>${todoHtml}</div>` : '',
