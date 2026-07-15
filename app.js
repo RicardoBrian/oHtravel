@@ -255,7 +255,7 @@ async function saveSettings() {
     await setDoc(doc(db, 'config', 'access'), updated);
     localStorage.setItem(LS_CONFIG, JSON.stringify(updated));
     $('modal-settings').classList.remove('open');
-    showToast('입장 코드가 변경됐습니다');
+    showToast('입장 코드 변경됨');
   } catch(err) {
     showToast('저장 실패: ' + (err?.message || err));
   }
@@ -400,7 +400,7 @@ async function saveNewTrip() {
   try {
     const ref = await addDoc(collection(db,'trips'), {title, startDate:start, endDate:end, createdAt:serverTimestamp()});
     $('modal-new-trip').classList.remove('open');
-    showToast('여행이 등록되었습니다');
+    showToast('여행 등록됨');
     navigate(ref.id);
   } catch(err) { showToast(`등록 실패: ${err?.message||err}`); }
 }
@@ -693,8 +693,8 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
     ].filter(Boolean).join(' → ');
     const durationStr = duration ? ` <span class="trans-duration">${duration}</span>` : '';
     const actBtns = isReadOnly ? '' :
-      `<button class="icon-action sm" title="편집" onclick="openTransportModal('${t.id}','${tripId}')"><svg class="ic" width="15" height="15"><use href="#ic-edit"/></svg></button>
-       <button class="icon-action sm danger" title="삭제" onclick="deleteTransport('${t.id}','${tripId}')"><svg class="ic" width="15" height="15"><use href="#ic-trash"/></svg></button>`;
+      `<button class="icon-action sm" title="편집" onclick="openTransportModal('${t.id}','${tripId}')">${ic('ic-edit',14)}</button>
+       <button class="icon-action sm danger" title="삭제" onclick="deleteTransport('${t.id}','${tripId}')">${ic('ic-trash',14)}</button>`;
     const html = `<div class="transport-item">
       <div class="transport-route">${ic(TRANS_ICONS[t.type]||'ic-car',15)} <b>${escHtml(t.fromCity||'?')}</b><span class="arrow">→</span><b>${escHtml(t.toCity||'?')}</b>${badge}</div>
       ${timeStr?`<div class="transport-meta">${ic('ic-clock',13)} ${timeStr}${durationStr}</div>`:''}
@@ -713,16 +713,18 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
       : escHtml(name);
     const accomMemoHtml = memoChip(data.accommodationMemo);
     if (t === 'transition') {
-      // 전환일: 이전 숙소 체크아웃 + 새 숙소 체크인 두 줄
+      // 전환일: 이전 숙소 체크아웃 + 새 숙소 체크인, 카드 하나에 hairline으로 구분
       const nightsTag = accomInfo.nights ? ` <span class="accom-nights">${accomInfo.nights}박</span>` : '';
-      return `<div class="accom-row"><span class="accom-status-badge checkout">체크아웃</span>${nameLink(accomInfo.prevAccom, accomInfo.prevAccomMap)}</div>
-              <div class="accom-row" style="margin-top:6px"><span class="accom-status-badge checkin">체크인</span>${nameLink(data.accommodation, data.accommodationMap)}${nightsTag}</div>
-              ${accomMemoHtml}`;
+      return `<div class="accom-card">
+        <div class="accom-row"><span class="accom-status-badge checkout">체크아웃</span>${nameLink(accomInfo.prevAccom, accomInfo.prevAccomMap)}</div>
+        <div class="accom-row accom-row-divider"><span class="accom-status-badge checkin">체크인</span>${nameLink(data.accommodation, data.accommodationMap)}${nightsTag}</div>
+        ${accomMemoHtml}
+      </div>`;
     }
     const badge = t === 'checkin'  ? `<span class="accom-status-badge checkin">체크인</span>` :
                   t === 'checkout' ? `<span class="accom-status-badge checkout">체크아웃</span>` : '';
     const nightsTag = (t === 'checkin' && accomInfo.nights) ? ` <span class="accom-nights">${accomInfo.nights}박</span>` : '';
-    return `<div class="accom-row">${badge}${nameLink(data.accommodation, data.accommodationMap)}${nightsTag}</div>${accomMemoHtml}`;
+    return `<div class="accom-card"><div class="accom-row">${badge}${nameLink(data.accommodation, data.accommodationMap)}${nightsTag}</div>${accomMemoHtml}</div>`;
   })() : '';
 
   // ── 메모 (내용 있을 때만) ──
