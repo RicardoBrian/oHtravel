@@ -70,14 +70,14 @@
       <input class="inp" id="inp-entry-code" type="password" placeholder="입장 코드"
         onkeydown="if(event.key==='Enter')document.getElementById('btn-entry-submit').click()" />
       <button class="btn accent" id="btn-entry-submit" style="width:100%;margin-top:6px;">입장</button>
-      <div id="entry-error" class="entry-error" style="display:none;">❌ 잘못된 입장 코드입니다</div>
+      <div id="entry-error" class="entry-error" style="display:none;">잘못된 입장 코드입니다</div>
     </div>
   </div>
 
   <nav class="nav">
     <div class="brand"><b>OH</b>travel</div>
     <div class="nav-end" id="nav-end">
-      <button class="btn ghost sm" id="btn-admin-gear" title="관리자" style="padding:6px 10px;">⚙️</button>
+      <button class="icon-action" id="btn-admin-gear" title="관리자"><svg class="ic" width="18" height="18"><use href="#ic-gear"/></svg></button>
     </div>
   </nav>
 
@@ -90,10 +90,10 @@
     <div class="section">
       <button class="btn accent" id="btn-new-trip">+ 새 여행 등록</button>
     </div>
-    <div id="offline-banner" class="offline-banner" style="display:none;">📴 오프라인 모드 — 캐시된 데이터를 표시합니다.</div>
+    <div id="offline-banner" class="offline-banner" style="display:none;">오프라인 모드 — 캐시된 데이터를 표시합니다.</div>
     <div id="trip-list" class="grid"></div>
     <div id="trip-list-empty" class="empty-state" style="display:none;">
-      <div class="empty-icon">🗺️</div>
+      <div class="empty-icon"><svg width="48" height="48"><use href="#ic-compass"/></svg></div>
       <div class="t-head">등록된 여행이 없습니다</div>
       <p class="t-cap">새 여행을 등록하여 계획을 시작하세요.</p>
     </div>
@@ -115,7 +115,7 @@
               <div id="trip-title-display" class="t-large"></div>
               <div id="trip-date-range" class="t-cap" style="margin-top:4px;font-size:.9rem;text-transform:none;letter-spacing:normal;"></div>
             </div>
-            <button class="btn sm icon-btn" id="btn-edit-trip" style="margin-top:6px;display:none;">✏️ 편집</button>
+            <button class="icon-action" id="btn-edit-trip" title="여행 편집" style="margin-top:6px;display:none;"><svg class="ic" width="16" height="16"><use href="#ic-edit"/></svg></button>
           </div>
           <div id="budget-bar-wrap" class="budget-bar-wrap" style="display:none;">
             <div class="budget-bar-labels">
@@ -179,10 +179,10 @@
       <div class="t-head" style="margin-bottom:16px;" id="modal-transport-title">교통 등록</div>
       <div class="field"><label>교통 수단</label>
         <select class="inp" id="inp-trans-type">
-          <option value="flight">✈️ 비행기</option>
-          <option value="train">🚆 기차</option>
-          <option value="ship">⛴️ 배</option>
-          <option value="bus">🚌 버스</option>
+          <option value="flight">비행기</option>
+          <option value="train">기차</option>
+          <option value="ship">배</option>
+          <option value="bus">버스</option>
         </select>
       </div>
       <div class="form-row-2">
@@ -248,12 +248,12 @@
           <div id="expense-list-edit" style="margin-bottom:12px;"></div>
           <div class="expense-add-row">
             <select class="inp" id="inp-exp-cat" style="flex:0 0 90px;font-size:.82rem;">
-              <option value="food">🍜 식비</option>
-              <option value="transport">🚌 교통</option>
-              <option value="lodging">🏨 숙박</option>
-              <option value="sightseeing">🎡 관광</option>
-              <option value="shopping">🛍️ 쇼핑</option>
-              <option value="etc">📦 기타</option>
+              <option value="food">식비</option>
+              <option value="transport">교통</option>
+              <option value="lodging">숙박</option>
+              <option value="sightseeing">관광</option>
+              <option value="shopping">쇼핑</option>
+              <option value="etc">기타</option>
             </select>
             <input class="inp" id="inp-exp-name" placeholder="항목명" style="flex:1;" />
             <div style="display:flex;flex-direction:column;gap:2px;">
@@ -340,11 +340,11 @@
   <!-- 관리자 인증 -->
   <div class="modal" id="modal-admin-auth" onclick="if(event.target===this)this.classList.remove('open')">
     <div class="modal-card">
-      <div class="t-head" style="margin-bottom:16px;">⚙️ 관리자 인증</div>
+      <div class="t-head" style="margin-bottom:16px;display:flex;align-items:center;gap:8px;"><svg class="ic" width="18" height="18"><use href="#ic-gear"/></svg> 관리자 인증</div>
       <div class="field"><label>관리자 비밀번호</label>
         <input type="password" class="inp" id="inp-admin-password" placeholder="비밀번호 입력"
           onkeydown="if(event.key==='Enter')document.getElementById('btn-verify-admin').click()" /></div>
-      <div id="admin-auth-error" style="display:none;color:var(--danger);font-size:.85rem;margin-bottom:8px;">❌ 잘못된 비밀번호입니다</div>
+      <div id="admin-auth-error" style="display:none;color:var(--danger);font-size:.85rem;margin-bottom:8px;">잘못된 비밀번호입니다</div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px;">
         <button class="btn ghost" onclick="document.getElementById('modal-admin-auth').classList.remove('open')">취소</button>
         <button class="btn accent" id="btn-verify-admin">확인</button>
@@ -356,7 +356,7 @@
   <div class="modal" id="modal-admin-panel" onclick="if(event.target===this)this.classList.remove('open')">
     <div class="modal-card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
-        <div class="t-head">⚙️ 관리자 설정</div>
+        <div class="t-head" style="display:flex;align-items:center;gap:8px;"><svg class="ic" width="18" height="18"><use href="#ic-gear"/></svg> 관리자 설정</div>
         <button class="btn ghost sm" onclick="document.getElementById('modal-admin-panel').classList.remove('open')">닫기</button>
       </div>
       <div class="field"><label>새 입장 코드</label>
@@ -374,33 +374,33 @@
     <div class="modal-card" style="width:min(480px,96vw);">
       <div class="t-head" style="margin-bottom:16px;">데이터 내보내기 / 가져오기</div>
       <div style="margin-bottom:20px;">
-        <div class="day-section-label" style="margin-bottom:10px;">📥 내보내기</div>
+        <div class="day-section-label" style="margin-bottom:10px;">내보내기</div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <button class="btn" id="btn-export-json" style="justify-content:flex-start;gap:10px;">
-            <span>📦</span><div><div style="font-weight:600;font-size:.9rem;">전체 백업 (JSON)</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">모든 데이터 완전 백업 · 재가져오기 가능</div></div>
+            <span class="ic-tile"><svg class="ic" width="17" height="17"><use href="#ic-folder"/></svg></span><div><div style="font-weight:600;font-size:.9rem;">전체 백업 (JSON)</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">모든 데이터 완전 백업 · 재가져오기 가능</div></div>
           </button>
           <button class="btn" id="btn-export-days-csv" style="justify-content:flex-start;gap:10px;">
-            <span>📅</span><div><div style="font-weight:600;font-size:.9rem;">일정 CSV</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">날짜별 도시, 테마, 숙소, 메모</div></div>
+            <span class="ic-tile"><svg class="ic" width="17" height="17"><use href="#ic-calendar"/></svg></span><div><div style="font-weight:600;font-size:.9rem;">일정 CSV</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">날짜별 도시, 테마, 숙소, 메모</div></div>
           </button>
           <button class="btn" id="btn-export-expenses-csv" style="justify-content:flex-start;gap:10px;">
-            <span>💰</span><div><div style="font-weight:600;font-size:.9rem;">지출 CSV</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">전체 지출 내역 스프레드시트</div></div>
+            <span class="ic-tile"><svg class="ic" width="17" height="17"><use href="#ic-wallet"/></svg></span><div><div style="font-weight:600;font-size:.9rem;">지출 CSV</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">전체 지출 내역 스프레드시트</div></div>
           </button>
           <button class="btn" id="btn-export-transport-csv" style="justify-content:flex-start;gap:10px;">
-            <span>✈️</span><div><div style="font-weight:600;font-size:.9rem;">교통 CSV</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">교통편 목록</div></div>
+            <span class="ic-tile"><svg class="ic" width="17" height="17"><use href="#ic-plane"/></svg></span><div><div style="font-weight:600;font-size:.9rem;">교통 CSV</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">교통편 목록</div></div>
           </button>
         </div>
       </div>
       <div>
-        <div class="day-section-label" style="margin-bottom:10px;">📤 가져오기</div>
+        <div class="day-section-label" style="margin-bottom:10px;">가져오기</div>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <button class="btn" id="btn-import-json" style="justify-content:flex-start;gap:10px;">
-            <span>📦</span><div><div style="font-weight:600;font-size:.9rem;">JSON 백업 복원</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">기존 데이터를 덮어씁니다</div></div>
+            <span class="ic-tile"><svg class="ic" width="17" height="17"><use href="#ic-folder"/></svg></span><div><div style="font-weight:600;font-size:.9rem;">JSON 백업 복원</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">기존 데이터를 덮어씁니다</div></div>
           </button>
           <button class="btn" id="btn-import-days-csv" style="justify-content:flex-start;gap:10px;">
-            <span>📅</span><div><div style="font-weight:600;font-size:.9rem;">일정 CSV 가져오기</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">날짜, 도시, 테마, 숙소, 메모 업데이트</div></div>
+            <span class="ic-tile"><svg class="ic" width="17" height="17"><use href="#ic-calendar"/></svg></span><div><div style="font-weight:600;font-size:.9rem;">일정 CSV 가져오기</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">날짜, 도시, 테마, 숙소, 메모 업데이트</div></div>
           </button>
           <button class="btn" id="btn-import-expenses-csv" style="justify-content:flex-start;gap:10px;">
-            <span>💰</span><div><div style="font-weight:600;font-size:.9rem;">지출 CSV 가져오기</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">날짜별 지출 추가 (기존 지출 대체)</div></div>
+            <span class="ic-tile"><svg class="ic" width="17" height="17"><use href="#ic-wallet"/></svg></span><div><div style="font-weight:600;font-size:.9rem;">지출 CSV 가져오기</div><div style="font-size:.78rem;color:var(--text-3);font-weight:400;">날짜별 지출 추가 (기존 지출 대체)</div></div>
           </button>
         </div>
       </div>

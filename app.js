@@ -23,8 +23,10 @@ const db  = getFirestore(app);
 // ══════════════════════════════════════
 //  상수
 // ══════════════════════════════════════
-const TRANS_ICONS  = { flight:'✈️', train:'🚆', ship:'⛴️', bus:'🚌' };
-const EXP_LABELS   = { food:'🍜 식비', transport:'🚌 교통', lodging:'🏨 숙박', sightseeing:'🎡 관광', shopping:'🛍️ 쇼핑', etc:'📦 기타' };
+const TRANS_ICONS  = { flight:'ic-plane', train:'ic-train', ship:'ic-ship', bus:'ic-bus' };
+const EXP_ICONS    = { food:'ic-food', transport:'ic-bus', lodging:'ic-bed', sightseeing:'ic-camera', shopping:'ic-bag', etc:'ic-box' };
+const EXP_LABELS   = { food:'식비', transport:'교통', lodging:'숙박', sightseeing:'관광', shopping:'쇼핑', etc:'기타' };
+function ic(id, size=15) { return `<svg class="ic" width="${size}" height="${size}"><use href="#${id}"/></svg>`; }
 const EXP_KEYS     = ['food','transport','lodging','sightseeing','shopping','etc'];
 const CURRENCIES   = { KRW:{s:'₩',n:'원'}, USD:{s:'$',n:'달러'}, JPY:{s:'¥',n:'엔'}, EUR:{s:'€',n:'유로'}, THB:{s:'฿',n:'바트'}, VND:{s:'₫',n:'동'}, SGD:{s:'S$',n:'싱가포르달러'}, GBP:{s:'£',n:'파운드'} };
 
@@ -47,7 +49,7 @@ function cityColor(city) {
   return CITY_PALETTE[h % CITY_PALETTE.length];
 }
 
-const WC_EMOJI = {0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',77:'❄️',80:'🌦️',81:'🌧️',82:'⛈️',85:'🌨️',86:'❄️',95:'⛈️',96:'⛈️',99:'⛈️'};
+const WC_ICONS = {0:'ic-sun',1:'ic-cloud-sun',2:'ic-cloud-sun',3:'ic-cloud',45:'ic-cloud',48:'ic-cloud',51:'ic-cloud-rain',53:'ic-cloud-rain',55:'ic-cloud-rain',61:'ic-cloud-rain',63:'ic-cloud-rain',65:'ic-cloud-rain',71:'ic-cloud-snow',73:'ic-cloud-snow',75:'ic-cloud-snow',77:'ic-cloud-snow',80:'ic-cloud-rain',81:'ic-cloud-rain',82:'ic-cloud-storm',85:'ic-cloud-snow',86:'ic-cloud-snow',95:'ic-cloud-storm',96:'ic-cloud-storm',99:'ic-cloud-storm'};
 
 // IATA 공항코드 → 국기
 const IATA_FLAGS = {
@@ -345,7 +347,7 @@ async function saveAdminSettings() {
     await setDoc(doc(db, 'config', 'access'), updated);
     localStorage.setItem(LS_CONFIG, JSON.stringify(updated));
     $('modal-admin-panel').classList.remove('open');
-    showToast('설정 저장됨 ✓');
+    showToast('설정 저장됨');
   } catch(err) {
     showToast('저장 실패: ' + (err?.message || err));
   }
@@ -423,7 +425,7 @@ function renderTripList(trips) {
       const today = todayStr();
       const cachedDays = JSON.parse(localStorage.getItem(LS_DAYS(trip.id))||'{}');
       const curCity = cachedDays[today]?.city;
-      if (curCity) currentCityBadge = `<span class="badge neutral">📍 현재: ${escHtml(curCity)}</span>`;
+      if (curCity) currentCityBadge = `<span class="badge neutral">${ic('ic-pin',12)} 현재: ${escHtml(curCity)}</span>`;
     }
     const card = document.createElement('div');
     card.className = 'trip-card';
@@ -435,9 +437,9 @@ function renderTripList(trips) {
       <div class="trip-card-date">${fmtDate(trip.startDate)} ~ ${fmtDate(trip.endDate)}</div>
       ${(budgetBadge||currentCityBadge) ? `<div style="display:flex;gap:6px;flex-wrap:wrap;">${currentCityBadge}${budgetBadge}</div>` : ''}
       <div class="trip-card-actions">
-        <button class="btn sm icon-btn btn-packing-card" data-id="${trip.id}">🎒 준비물</button>
-        <button class="btn sm icon-btn btn-dup-card" data-id="${trip.id}">📋 복제</button>
-        <button class="btn sm icon-btn btn-share-card" data-id="${trip.id}">🔗 공유</button>
+        <button class="btn sm icon-btn btn-packing-card" data-id="${trip.id}">${ic('ic-suitcase',14)} 준비물</button>
+        <button class="btn sm icon-btn btn-dup-card" data-id="${trip.id}">${ic('ic-clipboard',14)} 복제</button>
+        <button class="btn sm icon-btn btn-share-card" data-id="${trip.id}">${ic('ic-share',14)} 공유</button>
         <button class="btn sm danger btn-del-trip" data-id="${trip.id}">삭제</button>
       </div>`;
     card.addEventListener('click', e => {
@@ -480,7 +482,7 @@ async function duplicateTrip(trip) {
       budget:    trip.budget || 0,
       createdAt: serverTimestamp(),
     });
-    showToast('여행 복제됨 ✓');
+    showToast('여행 복제됨');
   } catch(err) { showToast('복제 실패: ' + (err?.message||err)); }
 }
 
@@ -498,7 +500,7 @@ async function saveNewTrip() {
   try {
     const ref = await addDoc(collection(db,'trips'), {title, startDate:start, endDate:end, createdAt:serverTimestamp()});
     $('modal-new-trip').classList.remove('open');
-    showToast('여행이 등록되었습니다 🎉');
+    showToast('여행이 등록되었습니다');
     navigate(ref.id);
   } catch(err) { showToast(`등록 실패: ${err?.message||err}`); }
 }
@@ -524,7 +526,7 @@ async function saveEditTrip(tripId) {
   $('trip-date-range').textContent = `${fmtDate(start)} ~ ${fmtDate(end)}`;
   const raw = localStorage.getItem(LS_TRIPS);
   if (raw) { const trips = JSON.parse(raw).map(t => t.id===tripId ? {...t,title,startDate:start,endDate:end} : t); localStorage.setItem(LS_TRIPS, JSON.stringify(trips)); }
-  try { await updateDoc(doc(db,'trips',tripId), {title, startDate:start, endDate:end}); showToast('여행 정보 저장됨 ✓'); }
+  try { await updateDoc(doc(db,'trips',tripId), {title, startDate:start, endDate:end}); showToast('여행 정보 저장됨'); }
   catch { showToast('오프라인 — 로컬 저장됨'); }
   const dayData   = JSON.parse(localStorage.getItem(LS_DAYS(tripId)) || '{}');
   const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId)) || '[]');
@@ -555,7 +557,7 @@ async function showTimelineView(tripId) {
   if (isReadOnly) {
     $('btn-back').style.display = 'none';
     editTripBtn.style.display   = 'none';
-    $('timeline-header-actions').innerHTML = `<div class="readonly-banner">🔒 읽기 전용 공유 모드</div>`;
+    $('timeline-header-actions').innerHTML = `<div class="readonly-banner">${ic('ic-lock',13)} 읽기 전용 공유 모드</div>`;
     $('timeline-sidebar').innerHTML = '';
   } else {
     $('btn-back').style.display = '';
@@ -563,14 +565,14 @@ async function showTimelineView(tripId) {
     editTripBtn.onclick = () => openEditTripModal(tripId);
 
     const actionBtnsHtml = `
-      <button class="btn sm" data-action="transport">✈️ 교통 등록</button>
-      <button class="btn sm" data-action="bulk-accom">🏨 숙소 일괄</button>
-      <button class="btn sm" data-action="packing">🎒 준비물</button>
-      <button class="btn sm" data-action="budget">💰 예산 설정</button>
-      <button class="btn sm" data-action="stats">📊 통계</button>
-      <button class="btn sm" data-action="share">🔗 공유</button>
-      <button class="btn sm" data-action="data-io">📂 내보내기</button>
-      <button class="btn sm" data-action="print">🖨️ 인쇄</button>`;
+      <button class="btn sm" data-action="transport">${ic('ic-plane',14)} 교통 등록</button>
+      <button class="btn sm" data-action="bulk-accom">${ic('ic-bed',14)} 숙소 일괄</button>
+      <button class="btn sm" data-action="packing">${ic('ic-suitcase',14)} 준비물</button>
+      <button class="btn sm" data-action="budget">${ic('ic-wallet',14)} 예산 설정</button>
+      <button class="btn sm" data-action="stats">${ic('ic-chart',14)} 통계</button>
+      <button class="btn sm" data-action="share">${ic('ic-share',14)} 공유</button>
+      <button class="btn sm" data-action="data-io">${ic('ic-folder',14)} 내보내기</button>
+      <button class="btn sm" data-action="print">${ic('ic-printer',14)} 인쇄</button>`;
 
     $('timeline-header-actions').innerHTML = actionBtnsHtml;
     $('timeline-sidebar').innerHTML = actionBtnsHtml;
@@ -744,7 +746,7 @@ function renderMissingAccomSummary(days, dayData) {
   if (!missing.length) { el.innerHTML = ''; return; }
   const preview = missing.slice(0,3).map(d => fmtDateShort(d.date)).join(', ');
   const more = missing.length > 3 ? ` 외 ${missing.length-3}건` : '';
-  el.innerHTML = `<div class="missing-accom-banner" title="클릭 시 첫 미정 날짜로 이동">🏨 숙소 미정 <strong>${missing.length}일</strong> — ${preview}${more}</div>`;
+  el.innerHTML = `<div class="missing-accom-banner" title="클릭 시 첫 미정 날짜로 이동">${ic('ic-warning',14)} 숙소 미정 <strong>${missing.length}일</strong> — ${preview}${more}</div>`;
   el.querySelector('.missing-accom-banner').onclick = () => {
     const card = document.getElementById(`day-${missing[0].date}`);
     if (card) card.scrollIntoView({behavior:'smooth',block:'start'});
@@ -756,7 +758,7 @@ function renderDateJump(days) {
   if (days.length < 5) { wrap.innerHTML = ''; return; }
   const select = document.createElement('select');
   select.className = 'inp date-jump-select';
-  select.innerHTML = `<option value="">📅 날짜 이동...</option>` +
+  select.innerHTML = `<option value="">날짜 이동...</option>` +
     days.map(d => `<option value="${d.date}">Day ${d.dayIndex} · ${fmtDateShort(d.date)}</option>`).join('');
   select.onchange = () => {
     if (!select.value) return;
@@ -786,13 +788,13 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
   // 도시 컬러
   const col = cityColor(data.city);
   const cityStyle = col ? `style="background:${col.bg};color:${col.text};"` : '';
-  const cityTag = data.city ? `<span class="city-tag" ${cityStyle}>📍 ${escHtml(data.city)}</span>` : '';
+  const cityTag = data.city ? `<span class="city-tag" ${cityStyle}>${ic('ic-pin',12)} ${escHtml(data.city)}</span>` : '';
 
   const weatherBadge = weather
-    ? `<span class="weather-badge">${WC_EMOJI[weather.code]||'🌡️'} ${weather.max}°/${weather.min}°</span>` : '';
+    ? `<span class="weather-badge">${ic(WC_ICONS[weather.code]||'ic-cloud',14)} ${weather.max}°/${weather.min}°</span>` : '';
   const missingBadge = hasMissingAccom && !isReadOnly
     ? `<span class="missing-accom-badge">숙소 미입력</span>` : '';
-  const editBtn = isReadOnly ? '' : `<button class="btn sm icon-btn day-edit-btn" onclick="openEditModal('${date}','${tripId}')">편집</button>`;
+  const editBtn = isReadOnly ? '' : `<button class="icon-action day-edit-btn" title="편집" onclick="openEditModal('${date}','${tripId}')"><svg class="ic" width="16" height="16"><use href="#ic-edit"/></svg></button>`;
   const collapseIcon = isCollapsed ? '▼' : '▲';
 
   // ── 교통 (내용 있을 때만) ──
@@ -807,20 +809,20 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
     const durationStr = duration ? ` <span class="trans-duration">${duration}</span>` : '';
     const fromFlag = getAirportFlag(t.fromCity), toFlag = getAirportFlag(t.toCity);
     const actBtns = isReadOnly ? '' :
-      `<button class="btn sm icon-btn" onclick="openTransportModal('${t.id}','${tripId}')">편집</button>
-       <button class="btn sm danger" onclick="deleteTransport('${t.id}','${tripId}')">삭제</button>`;
+      `<button class="icon-action sm" title="편집" onclick="openTransportModal('${t.id}','${tripId}')"><svg class="ic" width="15" height="15"><use href="#ic-edit"/></svg></button>
+       <button class="icon-action sm danger" title="삭제" onclick="deleteTransport('${t.id}','${tripId}')"><svg class="ic" width="15" height="15"><use href="#ic-trash"/></svg></button>`;
     return `<div class="transport-item">
-      <div class="transport-route">${TRANS_ICONS[t.type]||'🚗'} <b>${fromFlag}${escHtml(t.fromCity||'?')}</b><span class="arrow">→</span><b>${toFlag}${escHtml(t.toCity||'?')}</b>${badge}</div>
-      ${timeStr?`<div class="transport-meta">🕐 ${timeStr}${durationStr}</div>`:''}
-      ${t.bookingNo?`<div class="transport-booking">📋 ${escHtml(t.bookingNo)}</div>`:''}
-      ${t.memo?`<div class="transport-booking" style="color:var(--text-2)">💬 ${escHtml(t.memo)}</div>`:''}
+      <div class="transport-route">${ic(TRANS_ICONS[t.type]||'ic-car',15)} <b>${fromFlag}${escHtml(t.fromCity||'?')}</b><span class="arrow">→</span><b>${toFlag}${escHtml(t.toCity||'?')}</b>${badge}</div>
+      ${timeStr?`<div class="transport-meta">${ic('ic-clock',13)} ${timeStr}${durationStr}</div>`:''}
+      ${t.bookingNo?`<div class="transport-booking">${ic('ic-clipboard',13)} ${escHtml(t.bookingNo)}</div>`:''}
+      ${t.memo?`<div class="transport-booking" style="color:var(--text-2)">${ic('ic-message',13)} ${escHtml(t.memo)}</div>`:''}
       ${actBtns?`<div class="transport-actions">${actBtns}</div>`:''}
     </div>`;
   }).join('') : '';
 
   // ── 숙소 (내용 있을 때만) ──
   const accomHtml = data.accommodation ? (() => {
-    const mapBtn = data.accommodationMap ? ` <a href="${escHtml(data.accommodationMap)}" target="_blank" rel="noopener" class="accom-link">🗺 지도</a>` : '';
+    const mapBtn = data.accommodationMap ? ` <a href="${escHtml(data.accommodationMap)}" target="_blank" rel="noopener" class="accom-link">${ic('ic-map',13)} 지도</a>` : '';
     const t = accomInfo?.type;
     if (t === 'transition') {
       // 전환일: 이전 숙소 체크아웃 + 새 숙소 체크인 두 줄
@@ -838,7 +840,7 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
   const expHtml = expenses.length ? `
     <div class="expense-list">${expenses.map(e=>`
       <div class="expense-row">
-        <span class="expense-cat">${EXP_LABELS[e.category]||e.category}</span>
+        <span class="expense-cat">${ic(EXP_ICONS[e.category]||'ic-box',13)} ${EXP_LABELS[e.category]||e.category}</span>
         <span class="expense-name">${escHtml(e.name)}</span>
         <span class="expense-amount">${fmtExpenseAmount(e.amount,e.currency)}</span>
       </div>`).join('')}</div>
@@ -867,18 +869,18 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
   // ── 섹션 조합 (내용 있을 때만 렌더) ──
   const sections = [
     transHtml  ? `<div class="day-section">${transHtml}</div>` : '',
-    accomHtml  ? `<div class="day-section"><div class="day-section-label">🏨 숙소</div>${accomHtml}</div>` : '',
-    expHtml    ? `<div class="day-section"><div class="day-section-label">💰 지출</div>${expHtml}</div>` : '',
-    memoHtml   ? `<div class="day-section"><div class="day-section-label">📝 메모</div>${memoHtml}</div>` : '',
-    todoHtml   ? `<div class="day-section"><div class="day-section-label">✅ To-Do</div>${todoHtml}</div>` : '',
+    accomHtml  ? `<div class="day-section"><div class="day-section-label">${ic('ic-bed',13)} 숙소</div>${accomHtml}</div>` : '',
+    expHtml    ? `<div class="day-section"><div class="day-section-label">${ic('ic-wallet',13)} 지출</div>${expHtml}</div>` : '',
+    memoHtml   ? `<div class="day-section"><div class="day-section-label">${ic('ic-note',13)} 메모</div>${memoHtml}</div>` : '',
+    todoHtml   ? `<div class="day-section"><div class="day-section-label">${ic('ic-checklist',13)} To-Do</div>${todoHtml}</div>` : '',
   ].filter(Boolean).join('');
 
   // ── 요약 줄 (접힌 상태) ──
   const summaryParts = [
-    weather ? `${WC_EMOJI[weather.code]||'🌡️'} ${weather.max}°` : '',
+    weather ? `${ic(WC_ICONS[weather.code]||'ic-cloud',13)} ${weather.max}°` : '',
     data.accommodation || (hasMissingAccom && !isReadOnly ? '숙소 미정' : ''),
-    dayTrans.length ? `${TRANS_ICONS[dayTrans[0].type]||'🚗'} ${escHtml(dayTrans[0].fromCity||'')}→${escHtml(dayTrans[0].toCity||'')}` : '',
-    expenses.length ? `💰 ${fmtMoney(expTotalKRW)}` : '',
+    dayTrans.length ? `${ic(TRANS_ICONS[dayTrans[0].type]||'ic-car',13)} ${escHtml(dayTrans[0].fromCity||'')}→${escHtml(dayTrans[0].toCity||'')}` : '',
+    expenses.length ? `${ic('ic-wallet',13)} ${fmtMoney(expTotalKRW)}` : '',
   ].filter(Boolean);
 
   card.innerHTML = `
@@ -993,7 +995,7 @@ async function saveTransport(tripId) {
   try {
     if (editingTransId) await updateDoc(doc(db,'trips',tripId,'transports',editingTransId), payload);
     else await addDoc(collection(db,'trips',tripId,'transports'), payload);
-    showToast('교통 저장됨 ✓');
+    showToast('교통 저장됨');
   } catch { showToast('오프라인 — 로컬 저장됨'); }
 }
 
@@ -1052,7 +1054,7 @@ async function saveBulkAccom(tripId) {
 
   await Promise.all(saves);
   localStorage.setItem(cacheKey, JSON.stringify(dayData));
-  showToast(`${days.length}일치 숙소 등록 완료 ✓`);
+  showToast(`${days.length}일치 숙소 등록 완료`);
 
   if (currentTripRef) {
     const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
@@ -1077,7 +1079,7 @@ async function saveBudget(tripId) {
   currentTripRef = {...currentTripRef, budget};
   const raw = localStorage.getItem(LS_TRIPS);
   if (raw) { const trips=JSON.parse(raw).map(t=>t.id===tripId?{...t,budget}:t); localStorage.setItem(LS_TRIPS,JSON.stringify(trips)); }
-  try { await updateDoc(doc(db,'trips',tripId),{budget}); showToast(`예산 ${fmtMoney(budget)} 저장됨 ✓`); }
+  try { await updateDoc(doc(db,'trips',tripId),{budget}); showToast(`예산 ${fmtMoney(budget)} 저장됨`); }
   catch { showToast('오프라인 — 로컬 저장됨'); }
   updateBudgetBar(currentTripRef, JSON.parse(localStorage.getItem(LS_DAYS(tripId))||'{}'));
 }
@@ -1112,7 +1114,7 @@ function openStatsModal(tripId) {
   // 카테고리별 상위 3개만 간단히
   const topCats = EXP_KEYS.filter(k => catTotals[k])
     .sort((a,b) => catTotals[b]-catTotals[a]).slice(0,3)
-    .map(k => `<span class="badge neutral" style="font-size:.78rem;">${EXP_LABELS[k]} ${fmtMoney(catTotals[k])}</span>`).join('');
+    .map(k => `<span class="badge neutral" style="font-size:.78rem;">${ic(EXP_ICONS[k]||'ic-box',12)} ${EXP_LABELS[k]} ${fmtMoney(catTotals[k])}</span>`).join('');
 
   $('stats-content').innerHTML = `
     <div class="stat-grid">
@@ -1122,7 +1124,7 @@ function openStatsModal(tripId) {
       <div class="stat-box"><div class="num">${cities.length}</div><div class="lbl">방문 도시</div></div>
       <div class="stat-box"><div class="num">${transData.length}</div><div class="lbl">교통편</div></div>
     </div>
-    ${missingAccom ? `<div style="background:var(--danger-light);color:var(--danger);border-radius:var(--radius-sm);padding:10px 14px;font-size:.88rem;font-weight:600;margin-bottom:16px;">🏨 숙소 미정 ${missingAccom}일 남음</div>` : ''}
+    ${missingAccom ? `<div style="background:var(--danger-light);color:var(--danger);border-radius:var(--radius-sm);padding:10px 14px;font-size:.88rem;font-weight:600;margin-bottom:16px;">${ic('ic-warning',14)} 숙소 미정 ${missingAccom}일 남음</div>` : ''}
     ${cities.length ? `<div style="margin-bottom:16px;"><div class="day-section-label" style="margin-bottom:8px;">방문 도시</div><div style="display:flex;flex-wrap:wrap;gap:6px;">${cities.map(c=>`<span class="city-tag">${escHtml(c)}</span>`).join('')}</div></div>` : ''}
     <div style="margin-bottom:16px;">
       <div class="day-section-label" style="margin-bottom:10px;">지출 현황</div>
@@ -1218,7 +1220,7 @@ window.closeEditModal  = function() { $('modal-edit-day').classList.remove('open
 function renderEditExpenses() {
   $('expense-list-edit').innerHTML = editingExpenses.map((e,i) => `
     <div class="expense-item-edit">
-      <span class="exp-cat">${EXP_LABELS[e.category]||e.category}</span>
+      <span class="exp-cat">${ic(EXP_ICONS[e.category]||'ic-box',13)} ${EXP_LABELS[e.category]||e.category}</span>
       <span class="exp-name">${escHtml(e.name)}</span>
       <span class="exp-amt">${e.currency&&e.currency!=='KRW'?`${CURRENCIES[e.currency]?.s||''}${Number(e.amount).toLocaleString()}`:fmtMoney(e.amount)}</span>
       <button class="btn sm danger" style="padding:3px 8px;font-size:.72rem;margin-left:auto;" onclick="removeEditExpense(${i})">×</button>
@@ -1255,7 +1257,7 @@ async function saveDayEdit(tripId, date) {
   try {
     const ref = doc(db,'trips',tripId,'days',date);
     try { await updateDoc(ref, payload); } catch { await setDoc(ref, payload); }
-    showToast('저장됨 ✓');
+    showToast('저장됨');
   } catch { showToast('오프라인 — 로컬 저장됨'); }
   if (currentTripRef) {
     const transData = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
@@ -1418,7 +1420,7 @@ async function importJSON(tripId, text) {
       const weather  = JSON.parse(localStorage.getItem(LS_WEATHER(tripId))||'{}');
       renderTimeline(generateDays(currentTripRef.startDate, currentTripRef.endDate), dayData, transData, weather, tripId);
     }
-    showToast('JSON 백업 복원 완료 ✓');
+    showToast('JSON 백업 복원 완료');
   } catch(err) { showToast('복원 실패: ' + err.message); }
 }
 
@@ -1465,7 +1467,7 @@ async function importDaysCSV(tripId, text) {
       const weather   = JSON.parse(localStorage.getItem(LS_WEATHER(tripId))||'{}');
       renderTimeline(generateDays(currentTripRef.startDate,currentTripRef.endDate),dayData,transData,weather,tripId);
     }
-    showToast(`${count}일 일정 가져오기 완료 ✓`);
+    showToast(`${count}일 일정 가져오기 완료`);
   } catch(err) { showToast('가져오기 실패: ' + err.message); }
 }
 
@@ -1511,7 +1513,7 @@ async function importExpensesCSV(tripId, text) {
       renderTimeline(generateDays(currentTripRef.startDate,currentTripRef.endDate),dayData,transData,weather,tripId);
       updateBudgetBar(currentTripRef, dayData);
     }
-    showToast(`${count}일 지출 가져오기 완료 ✓`);
+    showToast(`${count}일 지출 가져오기 완료`);
   } catch(err) { showToast('가져오기 실패: ' + err.message); }
 }
 
