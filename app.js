@@ -448,8 +448,10 @@ async function showTimelineView(tripId) {
     editTripBtn.style.display   = 'none';
     $('timeline-header-actions').innerHTML = `
       <div class="readonly-banner">${ic('ic-lock',13)} 읽기 전용 공유 모드</div>
+      <button type="button" class="btn sm ghost" id="btn-packing-readonly">${ic('ic-suitcase',14)} 준비물</button>
       <button type="button" class="btn sm ghost" id="btn-settle-readonly">${ic('ic-wallet',14)} 정산</button>`;
     $('timeline-sidebar').innerHTML = '';
+    $('btn-packing-readonly').onclick = () => openPackingModal(tripId);
     $('btn-settle-readonly').onclick = () => {
       const name = encodeURIComponent(trip.title || '');
       window.open(`https://ohsettle.vercel.app/?name=${name}`, '_blank', 'noopener');
@@ -999,19 +1001,24 @@ async function saveBulkEdit(tripId) {
 function openPackingModal(tripId) {
   if (!currentTripRef) { currentTripRef = JSON.parse(localStorage.getItem(LS_TRIPS)||'[]').find(t=>t.id===tripId)||null; }
   if (!currentTripRef?.packing) currentTripRef = { ...currentTripRef, packing:[] };
-  $('modal-packing').classList.add('open');
+  const modal = $('modal-packing');
+  modal.querySelector('.packing-templates').style.display = isReadOnly ? 'none' : '';
+  modal.querySelector('.todo-add-row').style.display = isReadOnly ? 'none' : '';
+  $('btn-clear-packing').style.display = isReadOnly ? 'none' : '';
+  modal.classList.add('open');
   renderPackingList(tripId);
 }
 function renderPackingList(tripId) {
   const items = currentTripRef?.packing || [];
   const done  = items.filter(i=>i.done).length;
+  $('packing-list').className = isReadOnly ? 'todo-list readonly-todos' : 'todo-list';
   $('packing-list').innerHTML = items.map((item,idx) => `
     <li class="todo-item${item.done?' done':''}" style="justify-content:space-between;">
       <div style="display:flex;align-items:center;gap:8px;flex:1;">
-        <input type="checkbox" ${item.done?'checked':''} onchange="togglePacking('${tripId}',${idx},this.checked)" />
+        <input type="checkbox" ${item.done?'checked':''} ${isReadOnly?'disabled':''} onchange="togglePacking('${tripId}',${idx},this.checked)" />
         <label>${escHtml(item.text)}</label>
       </div>
-      <button class="icon-action sm danger" title="삭제" onclick="deletePacking('${tripId}',${idx})">${ic('ic-close',14)}</button>
+      ${isReadOnly ? '' : `<button class="icon-action sm danger" title="삭제" onclick="deletePacking('${tripId}',${idx})">${ic('ic-close',14)}</button>`}
     </li>`).join('');
   $('packing-progress').textContent = `${done} / ${items.length} 완료`;
 }
