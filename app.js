@@ -459,7 +459,8 @@ async function showTimelineView(tripId) {
       <button class="btn sm ghost" data-action="packing">${ic('ic-suitcase',14)} 준비물</button>
       <button class="btn sm ghost" data-action="share">${ic('ic-share',14)} 공유</button>
       <button class="btn sm ghost" data-action="data-io">${ic('ic-folder',14)} 백업</button>
-      <button class="btn sm ghost" data-action="print">${ic('ic-printer',14)} 인쇄</button>`;
+      <button class="btn sm ghost" data-action="print">${ic('ic-printer',14)} 인쇄</button>
+      <button class="btn sm ghost" data-action="settle">${ic('ic-wallet',14)} 정산</button>`;
 
     $('timeline-header-actions').innerHTML = actionBtnsHtml;
     $('timeline-sidebar').innerHTML = actionBtnsHtml;
@@ -478,6 +479,10 @@ async function showTimelineView(tripId) {
         }
         else if (a==='data-io') openDataIOModal(tripId);
         else if (a==='print') window.print();
+        else if (a==='settle') {
+          const name = encodeURIComponent(currentTripRef?.title || '');
+          window.open(`https://ohsettle.vercel.app/?name=${name}`, '_blank', 'noopener');
+        }
       });
     };
     bindActions($('timeline-header-actions'));
