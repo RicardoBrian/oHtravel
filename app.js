@@ -446,8 +446,14 @@ async function showTimelineView(tripId) {
   if (isReadOnly) {
     $('btn-back').style.display = 'none';
     editTripBtn.style.display   = 'none';
-    $('timeline-header-actions').innerHTML = `<div class="readonly-banner">${ic('ic-lock',13)} 읽기 전용 공유 모드</div>`;
+    $('timeline-header-actions').innerHTML = `
+      <div class="readonly-banner">${ic('ic-lock',13)} 읽기 전용 공유 모드</div>
+      <button type="button" class="btn sm ghost" id="btn-settle-readonly">${ic('ic-wallet',14)} 정산</button>`;
     $('timeline-sidebar').innerHTML = '';
+    $('btn-settle-readonly').onclick = () => {
+      const name = encodeURIComponent(trip.title || '');
+      window.open(`https://ohsettle.vercel.app/?name=${name}`, '_blank', 'noopener');
+    };
   } else {
     $('btn-back').style.display = '';
     editTripBtn.style.display   = '';
