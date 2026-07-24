@@ -78,6 +78,7 @@ let editingTransId = null;
 let currentTripRef = null;
 let collapsedDays  = new Set(); // 기본 펼침 — 명시적으로 접은 날짜만 추적
 let pendingDelete  = null;
+let didScrollToday = false; // 여행 진입 시 한 번만 오늘(또는 첫날) 위치로 스크롤
 
 // ══════════════════════════════════════
 //  유틸
@@ -262,6 +263,11 @@ async function saveSettings() {
   }
 }
 
+function logout() {
+  localStorage.removeItem('ohtravel_authed_at');
+  location.reload();
+}
+
 // ══════════════════════════════════════
 //  다크 모드 & 온라인
 // ══════════════════════════════════════
@@ -442,6 +448,7 @@ async function showTimelineView(tripId) {
   $('view-dashboard').style.display = 'none'; $('view-timeline').style.display = '';
   initDarkToggle();
   if (unsubTrips) { unsubTrips(); unsubTrips = null; }
+  didScrollToday = false;
 
   let trip = null;
   if (isOnline) { try { const s = await getDoc(doc(db,'trips',tripId)); if (s.exists()) trip = {id:s.id,...s.data()}; } catch {} }
@@ -614,9 +621,17 @@ function renderTimeline(days, dayData, transData, weather, tripId) {
     container.appendChild(wrapper);
   });
 
-  // 오늘 카드로 스크롤
-  const todayCard = container.querySelector(`#day-${today}`);
-  if (todayCard) setTimeout(() => todayCard.scrollIntoView({behavior:'smooth',block:'start'}), 300);
+  // 여행 진입 시 한 번만: 오늘 카드로 스크롤 (여행 전이면 스크롤 안 함 → 자연히 첫 날짜가 최상단)
+  if (!didScrollToday) {
+    didScrollToday = true;
+    const todayCard = container.querySelector(`#day-${today}`);
+    if (todayCard) {
+      // 카드 기본 펼침으로 페이지가 길어져서 setTimeout 고정값보다 레이아웃 완료를 기다리는 게 안전함
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        todayCard.scrollIntoView({behavior:'smooth',block:'start'});
+      }));
+    }
+  }
 }
 
 function renderTripStatus(days, today, dayData) {
@@ -1226,6 +1241,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 설정
   $('btn-settings').addEventListener('click', openSettings);
   $('btn-save-settings').addEventListener('click', saveSettings);
+  $('btn-logout').addEventListener('click', logout);
 
   // 대시보드
   $('btn-new-trip').addEventListener('click', openNewTripModal);
