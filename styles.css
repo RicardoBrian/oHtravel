@@ -17,7 +17,7 @@
   --glass-strong: rgba(255,255,255,.74);
   --glass-nav: rgba(255,255,255,.62);
   --blur: saturate(180%) blur(22px);
-  --text: #1a1c22; --text-2: #5b606b; --text-3: #8a8f99;
+  --text: #1a1c22; --text-2: #5b606b; --text-3: #73777f;
   --accent: #0071e3; --accent-hover: #0a84ff;
   --accent-light: rgba(0,113,227,.12);
   --accent-grad: linear-gradient(180deg,#3a9bff 0%,#0071e3 100%);
@@ -47,7 +47,7 @@ body.dark {
   --surface: rgba(44,46,58,.58); --surface-2: rgba(58,60,74,.46);
   --glass: rgba(40,42,54,.52); --glass-strong: rgba(54,56,70,.74);
   --glass-nav: rgba(20,21,28,.62);
-  --text: #f2f4f8; --text-2: #aab0bd; --text-3: #7e848f;
+  --text: #f2f4f8; --text-2: #aab0bd; --text-3: #9096a3;
   --accent: #0a84ff; --accent-hover: #409cff;
   --accent-light: rgba(10,132,255,.18);
   --accent-grad: linear-gradient(180deg,#2b95ff 0%,#0a84ff 100%);
@@ -65,7 +65,7 @@ body.dark {
 body {
   background: var(--bg); background-attachment: fixed;
   color: var(--text); font-family: var(--font);
-  font-size: 17px; line-height: 1.5; letter-spacing: -.01em;
+  font-size: 17px; line-height: 1.5; letter-spacing: normal;
   -webkit-font-smoothing: antialiased; min-height: 100vh;
 }
 
