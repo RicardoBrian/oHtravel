@@ -58,12 +58,15 @@ const LS_CONFIG  = 'ohtravel_config';
 // ══════════════════════════════════════
 const AUTH_TTL_MS = 3 * 24 * 60 * 60 * 1000; // 마지막 접속 후 3일 지나면 로그아웃
 function checkAuthed() {
-  const ts = Number(localStorage.getItem('ohtravel_authed_at') || 0);
-  if (ts > 0 && (Date.now() - ts) < AUTH_TTL_MS) {
-    localStorage.setItem('ohtravel_authed_at', String(Date.now())); // 접속할 때마다 3일 슬라이딩 갱신
-    return true;
-  }
-  localStorage.removeItem('ohtravel_authed_at');
+  // localStorage가 막힌 환경(인앱 브라우저 등)에서 여기서 던지면 모듈 스크립트 전체가 멈추므로 반드시 방어
+  try {
+    const ts = Number(localStorage.getItem('ohtravel_authed_at') || 0);
+    if (ts > 0 && (Date.now() - ts) < AUTH_TTL_MS) {
+      localStorage.setItem('ohtravel_authed_at', String(Date.now())); // 접속할 때마다 3일 슬라이딩 갱신
+      return true;
+    }
+    localStorage.removeItem('ohtravel_authed_at');
+  } catch {}
   return false;
 }
 
@@ -230,7 +233,7 @@ async function handleEntrySubmit() {
   if (!code) return;
   const cfg = await getAccessConfig();
   if (code === cfg.entryCode) {
-    localStorage.setItem('ohtravel_authed_at', String(Date.now()));
+    try { localStorage.setItem('ohtravel_authed_at', String(Date.now())); } catch {}
     isAuthed = true;
     hideEntryScreen();
     boot();
@@ -264,7 +267,7 @@ async function saveSettings() {
 }
 
 function logout() {
-  localStorage.removeItem('ohtravel_authed_at');
+  try { localStorage.removeItem('ohtravel_authed_at'); } catch {}
   location.reload();
 }
 
