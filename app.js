@@ -56,7 +56,18 @@ const LS_CONFIG  = 'ohtravel_config';
 // ══════════════════════════════════════
 //  상태
 // ══════════════════════════════════════
-let isAuthed       = sessionStorage.getItem('ohtravel_authed') === '1';
+const AUTH_TTL_MS = 3 * 24 * 60 * 60 * 1000; // 마지막 접속 후 3일 지나면 로그아웃
+function checkAuthed() {
+  const ts = Number(localStorage.getItem('ohtravel_authed_at') || 0);
+  if (ts > 0 && (Date.now() - ts) < AUTH_TTL_MS) {
+    localStorage.setItem('ohtravel_authed_at', String(Date.now())); // 접속할 때마다 3일 슬라이딩 갱신
+    return true;
+  }
+  localStorage.removeItem('ohtravel_authed_at');
+  return false;
+}
+
+let isAuthed       = checkAuthed();
 let currentTripId  = null;
 let isReadOnly     = false;
 let isOnline       = navigator.onLine;
@@ -65,7 +76,7 @@ let unsubDays      = null;
 let unsubTrans     = null;
 let editingTransId = null;
 let currentTripRef = null;
-let expandedDays   = new Set(); // 기본 접힘 — 명시적으로 펼친 날짜만 추적
+let collapsedDays  = new Set(); // 기본 펼침 — 명시적으로 접은 날짜만 추적
 let pendingDelete  = null;
 
 // ══════════════════════════════════════
@@ -218,7 +229,7 @@ async function handleEntrySubmit() {
   if (!code) return;
   const cfg = await getAccessConfig();
   if (code === cfg.entryCode) {
-    sessionStorage.setItem('ohtravel_authed', '1');
+    localStorage.setItem('ohtravel_authed_at', String(Date.now()));
     isAuthed = true;
     hideEntryScreen();
     boot();
@@ -658,7 +669,7 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
   // 여행 마지막 날은 체크아웃하고 떠나는 날이라 숙소가 없는 게 정상
   const hasMissingAccom = !data.accommodation && !hasOvernightTrans && !isLastDayOfTrip;
   const isTravelDay = dayTrans.some(t => t.departDate === date || t.arriveDate === date);
-  const isCollapsed = !expandedDays.has(date);
+  const isCollapsed = collapsedDays.has(date);
 
   let cls = 'day-card';
   if (isToday(date)) cls += ' today';
@@ -798,9 +809,9 @@ window.toggleDayCollapse = function(date, e) {
   if (e) e.stopPropagation();
   const card = document.getElementById(`day-${date}`);
   if (!card) return;
-  if (expandedDays.has(date)) expandedDays.delete(date);
-  else expandedDays.add(date);
-  const collapsed = !expandedDays.has(date);
+  if (collapsedDays.has(date)) collapsedDays.delete(date);
+  else collapsedDays.add(date);
+  const collapsed = collapsedDays.has(date);
   card.classList.toggle('collapsed', collapsed);
   const btn = card.querySelector('.collapse-btn');
   if (btn) btn.title = collapsed ? '펼치기' : '접기';
