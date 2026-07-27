@@ -769,7 +769,7 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
       <input type="checkbox" ${todo.done?'checked':''} ${isReadOnly?'disabled':''}
         onchange="toggleTodo('${tripId}','${date}',${todo._i},this.checked)" />
       ${withTime ? `<span class="todo-time">${todo.time}</span>` : ''}
-      <label>${escHtml(todo.text)}</label>
+      <label>${autoLink(todo.text)}</label>
     </${tag}>`;
 
   // ── 일정: 교통 + 시간 등록된 할일을 시간순으로 통합 ──
