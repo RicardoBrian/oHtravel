@@ -51,6 +51,7 @@ const LS_TRIPS   = 'ohtravel_trips';
 const LS_DAYS    = id => `ohtravel_days_${id}`;
 const LS_TRANS   = id => `ohtravel_trans_${id}`;
 const LS_WEATHER = id => `ohtravel_weather_${id}`;
+const LS_COLLAPSED = id => `ohtravel_collapsed_${id}`;
 const LS_CONFIG  = 'ohtravel_config';
 
 // ══════════════════════════════════════
@@ -159,10 +160,18 @@ function autoLink(text) {
   ).join('');
 }
 
-// "10:00 박물관 예약" → { time:'10:00', text:'박물관 예약' } / 시간 없으면 { time:null, text:raw }
+// "10:00 박물관 예약 https://maps.google.com/..." → 시간/링크를 텍스트에서 분리
 function parseTodoInput(raw) {
-  const m = raw.trim().match(/^([01]?\d|2[0-3]):([0-5]\d)\s+(.+)/);
-  return m ? { time: `${m[1].padStart(2,'0')}:${m[2]}`, text: m[3].trim() } : { time: null, text: raw.trim() };
+  let s = raw.trim();
+  const timeMatch = s.match(/^([01]?\d|2[0-3]):([0-5]\d)\s+(.+)/);
+  const time = timeMatch ? `${timeMatch[1].padStart(2,'0')}:${timeMatch[2]}` : null;
+  if (timeMatch) s = timeMatch[3].trim();
+
+  const linkMatch = s.match(/(https?:\/\/[^\s]+)/);
+  const link = linkMatch ? linkMatch[1] : null;
+  const text = linkMatch ? s.replace(linkMatch[1], ' ').replace(/\s+/g, ' ').trim() : s;
+
+  return { time, text, link };
 }
 
 // 내용 있을 때만 "메모" 칩 렌더 — 탭하면 펼쳐짐, 칩 자체도 열림 상태 표시
@@ -452,6 +461,8 @@ async function showTimelineView(tripId) {
   initDarkToggle();
   if (unsubTrips) { unsubTrips(); unsubTrips = null; }
   didScrollToday = false;
+  try { collapsedDays = new Set(JSON.parse(localStorage.getItem(LS_COLLAPSED(tripId)) || '[]')); }
+  catch { collapsedDays = new Set(); }
 
   let trip = null;
   if (isOnline) { try { const s = await getDoc(doc(db,'trips',tripId)); if (s.exists()) trip = {id:s.id,...s.data()}; } catch {} }
@@ -629,10 +640,11 @@ function renderTimeline(days, dayData, transData, weather, tripId) {
     didScrollToday = true;
     const todayCard = container.querySelector(`#day-${today}`);
     if (todayCard) {
-      // 카드 기본 펼침으로 페이지가 길어져서 setTimeout 고정값보다 레이아웃 완료를 기다리는 게 안전함
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        todayCard.scrollIntoView({behavior:'smooth',block:'start'});
-      }));
+      // 홈화면 웹앱(standalone) 등에서 smooth 애니메이션이 씹히는 경우가 있어 즉시 이동으로 전환하고,
+      // 레이아웃이 늦게 끝나는 환경 대비 rAF 두 번 + 지연 재시도까지 이중으로 시도
+      const doScroll = () => todayCard.scrollIntoView({block:'start'});
+      requestAnimationFrame(() => requestAnimationFrame(doScroll));
+      setTimeout(doScroll, 500);
     }
   }
 }
@@ -769,7 +781,7 @@ function buildDayCard(date, dayIndex, data, dayTrans, weather, tripId, accomInfo
       <input type="checkbox" ${todo.done?'checked':''} ${isReadOnly?'disabled':''}
         onchange="toggleTodo('${tripId}','${date}',${todo._i},this.checked)" />
       ${withTime ? `<span class="todo-time">${todo.time}</span>` : ''}
-      <label>${autoLink(todo.text)}</label>
+      <label>${todo.link ? `<a href="${escHtml(todo.link)}" target="_blank" rel="noopener" class="accom-link">${escHtml(todo.text)}</a>` : escHtml(todo.text)}</label>
     </${tag}>`;
 
   // ── 일정: 교통 + 시간 등록된 할일을 시간순으로 통합 ──
@@ -829,6 +841,7 @@ window.toggleDayCollapse = function(date, e) {
   if (!card) return;
   if (collapsedDays.has(date)) collapsedDays.delete(date);
   else collapsedDays.add(date);
+  try { localStorage.setItem(LS_COLLAPSED(currentTripId), JSON.stringify([...collapsedDays])); } catch {}
   const collapsed = collapsedDays.has(date);
   card.classList.toggle('collapsed', collapsed);
   const btn = card.querySelector('.collapse-btn');
@@ -1093,7 +1106,7 @@ window.openEditModal = function(date, tripId) {
   $('inp-accom-map').value  = data.accommodationMap||'';
   $('inp-accom-memo').value = data.accommodationMemo||'';
   $('inp-memo').value       = data.memo||'';
-  $('inp-todos').value      = (data.todos||[]).map(t => t.time ? `${t.time} ${t.text}` : t.text).join('\n');
+  $('inp-todos').value      = (data.todos||[]).map(t => [t.time, t.text, t.link].filter(Boolean).join(' ')).join('\n');
 
   // 그날의 교통편 — 탭하면 해당 편집으로 이동 (개별 카드에서 없앤 수정 진입점을 여기로 통합)
   const dayTrans = JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]')
@@ -1120,9 +1133,9 @@ async function saveDayEdit(tripId, date) {
   const prevData = JSON.parse(localStorage.getItem(LS_DAYS(tripId))||'{}')?.[date]||{};
   const todosRaw = $('inp-todos').value.trim();
   const todos    = todosRaw ? todosRaw.split('\n').filter(l=>l.trim()).map(line => {
-    const {time, text} = parseTodoInput(line);
+    const {time, text, link} = parseTodoInput(line);
     const prev = (prevData.todos||[]).find(t=>t.text===text);
-    return { text, done: prev?.done||false, time };
+    return { text, done: prev?.done||false, time, link };
   }) : [];
   const payload = {
     theme:$('inp-theme').value.trim(),
@@ -1165,11 +1178,11 @@ window.toggleTodo = async function(tripId, date, idx, done) {
 
 window.addTodo = async function(tripId, date) {
   const inp=$(`ti-${date}`), raw=inp?.value.trim(); if(!raw) return;
-  const {time, text} = parseTodoInput(raw);
+  const {time, text, link} = parseTodoInput(raw);
   const cacheKey=LS_DAYS(tripId), dayData=JSON.parse(localStorage.getItem(cacheKey)||'{}');
   if (!dayData[date]) dayData[date]={};
   if (!dayData[date].todos) dayData[date].todos=[];
-  dayData[date].todos.push({text,done:false,time}); localStorage.setItem(cacheKey,JSON.stringify(dayData)); inp.value='';
+  dayData[date].todos.push({text,done:false,time,link}); localStorage.setItem(cacheKey,JSON.stringify(dayData)); inp.value='';
   try { const ref=doc(db,'trips',tripId,'days',date); try{await updateDoc(ref,{todos:dayData[date].todos});}catch{await setDoc(ref,dayData[date]);} } catch {}
   if (currentTripRef) {
     const transData=JSON.parse(localStorage.getItem(LS_TRANS(tripId))||'[]');
@@ -1277,3 +1290,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   boot();
 });
+
+// 홈화면 웹앱으로 재실행할 때 네트워크가 불안정해도 앱 셸은 뜨도록 캐싱
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
